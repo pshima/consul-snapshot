@@ -1,0 +1,58 @@
+# Example Nomad jobspec for consul-snapshot
+
+job "consul-snapshot" {
+    # Job should run in the US region
+    region = "us"
+
+    # Spread tasks between us-west-1 and us-east-1
+    datacenters = ["us-west-1", "us-east-1"]
+
+    # run this job globally
+    type = "system"
+
+    # Rolling updates should be sequential
+    update {
+        stagger = "30s"
+        max_parallel = 1
+    }
+
+    group "backups" {
+        # We want 1 backup server
+        count = 1
+
+        # Create a web front end using a docker image
+        task "frontend" {
+            driver = "docker"
+            config {
+                image = "hashicorp/web-frontend"
+            }
+            service {
+                port = "http"
+                check {
+                    type = "http"
+                    path = "/health"
+                    interval = "10s"
+                    timeout = "2s"
+                }
+            }
+            env {
+                S3BUCKET = "lookmomimbackingupmyconsul"
+                S3REGION = "us-east-1"
+                AWS_ACCESS_KEY_ID = "AK1234567890"
+                AWS_SECRET_ACCESS_KEY = "8idsufpa0udfp8apdf98afd"
+                BACKUPINTERVAL = 300
+            }
+            resources {
+                cpu = 500
+                memory = 1024
+                network {
+                    mbits = 100
+                    # Request for a dynamic port
+                    port "http" {
+                    }
+
+                }
+            }
+        }
+    }
+}
