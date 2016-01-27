@@ -8,7 +8,7 @@ job "consul-snapshot" {
     datacenters = ["us-west-1", "us-east-1"]
 
     # run this job globally
-    type = "system"
+    type = "service"
 
     # Rolling updates should be sequential
     update {
@@ -21,10 +21,11 @@ job "consul-snapshot" {
         count = 1
 
         # Create a web front end using a docker image
-        task "frontend" {
-            driver = "docker"
+        task "backup" {
+            driver = "exec"
             config {
-                image = "hashicorp/web-frontend"
+                command = "consul-snapshot"
+                args = ["backup"]
             }
             service {
                 port = "http"
