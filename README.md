@@ -26,7 +26,25 @@ Authentication is done through the above environment variables.
 ## Running
 Running a backup:
 ```
-consul-snapshot backup
+$ consul-snapshot backup
+[INFO] v0.1.0: Starting Consul Snapshot
+2016/01/27 06:07:18 [DEBUG] Backup starting on interval: 30s
+2016/01/27 06:07:48 [INFO] Starting Backup At: 1453874868
+2016/01/27 06:07:48 [INFO] Listing keys from consul
+2016/01/27 06:07:48 [INFO] Converting keys to JSON
+2016/01/27 06:07:48 [INFO] Writing Local Backup File
+2016/01/27 06:07:48 [DEBUG] Wrote 37362 bytes to file, /tmp/consul.backup.1453874868.gz
+2016/01/27 06:07:48 [INFO] Writing Backup to Remote File
+2016/01/27 06:07:48 [INFO] Uploading testbucket/consul.backup.1453874868.gz to S3 in us-west-2
+2016/01/27 06:07:48 [INFO] Running post processing
+2016/01/27 06:08:18 [INFO] Starting Backup At: 1453874898
+2016/01/27 06:08:18 [INFO] Listing keys from consul
+2016/01/27 06:08:18 [INFO] Converting keys to JSON
+2016/01/27 06:08:18 [INFO] Writing Local Backup File
+2016/01/27 06:08:18 [DEBUG] Wrote 37362 bytes to file, /tmp/consul.backup.1453874898.gz
+2016/01/27 06:08:18 [INFO] Writing Backup to Remote File
+2016/01/27 06:08:18 [INFO] Uploading testbucket/consul.backup.1453874898.gz to S3 in us-west-2
+2016/01/27 06:08:19 [INFO] Running post processing
 ```
 
 Running a restore:
