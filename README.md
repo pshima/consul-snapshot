@@ -1,8 +1,8 @@
 # consul-snapshot
 
-consul-snapshot is a backup utility for consul (http://consul.io).  This is slightly different than some other utilities out there as this runs as a daemon.  It also has support for single backups with multiple nodes utilizing consul locking.
+consul-snapshot is a backup utility for Consul (https://www.consul.io).  This is slightly different than some other utilities out there as this runs as a daemon.  This is intended to run under Nomad (https://www.nomadproject.io).
 
-consul-snapshot is still in early development and lacks critical features such as restore, use at your own risk.
+WARNING: consul-snapshot is still in early development use at your own risk.  This is not used in production.
 
 ## Configuration
 Configuration is done from environment variables.
@@ -12,15 +12,33 @@ Configuration is done from environment variables.
 - AWS_SECRET_ACCESS_KEY (the secret key used to access the bucket)
 - BACKUPINTERVAL (how often you want the backup to run in seconds)
 
+And through the consul api there are several options available (https://github.com/hashicorp/consul/blob/master/api/api.go#L126)
+
+- CONSUL_HTTP_ADDR (default: 127.0.0.1:8500)
+- CONSUL_HTTP_TOKEN (default: nil)
+- CONSUL_HTTP_AUTH (default: nil)
+- CONSUL_HTTP_SSL (default: nil)
+- CONSUL_HTTP_SSL_VERIFY (default: nil)
+
 ## Authentication
-This does not use any authentication in consul and uses environment variables for the aws-sdk-go S3 configuration.
+Authentication is done through the above environment variables.
 
 ## Running
-Just run the binary, there are no options, use the environment variables for configuration.
+Running a backup:
+```
+consul-snapshot backup
+```
 
-## Todo List
+Running a restore:
+```
+consul-snapshot restore path/to/file/in/s3/bucket
+```
+
+## Todos
+- Add unit tests
+- Inspect app performance on larger data structures
+- Add consul health checks
 - Backup in chunks instead of all at once
-- Add tests
 - Add a web interface to view backups
 - Add metrics
 - Add single key backups
