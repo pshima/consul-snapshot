@@ -102,6 +102,7 @@ func writeBackupLocal(b *Backup) {
 }
 
 // Write the local backup file to S3.
+// There are no tests for this remote operation
 func writeBackupRemote(b *Backup, conf config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
@@ -131,6 +132,7 @@ func writeBackupRemote(b *Backup, conf config.Config) {
 }
 
 // Run post processing on the backup, acking the key and removing and temp files.
+// There are no tests for the remote operation.
 func postProcess(b *Backup, c *consul.Consul) {
 	// Mark a key in consul for our last backup time.
 	writeOpt := &consulapi.WriteOptions{}

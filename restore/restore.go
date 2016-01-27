@@ -26,6 +26,7 @@ type Restore struct {
 	RestorePath   string
 }
 
+// Just the runner to call from the command line
 func RestoreRunner(restorepath string) int {
 	consulClient := &consul.Consul{Client: *consul.ConsulClient()}
 
@@ -36,6 +37,7 @@ func RestoreRunner(restorepath string) int {
 	return 0
 }
 
+// actually do the work here.
 func doWork(conf config.Config, c *consul.Consul, restorePath string) {
 	restore := &Restore{}
 	restore.StartTime = time.Now().Unix()
@@ -47,6 +49,7 @@ func doWork(conf config.Config, c *consul.Consul, restorePath string) {
 
 }
 
+// Get the backup from S3
 func getRemoteBackup(r *Restore, conf config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
@@ -72,6 +75,7 @@ func getRemoteBackup(r *Restore, conf config.Config) {
 	outFile.Close()
 }
 
+// extract the backup to the Restore struct
 func extractBackup(r *Restore) {
 	// Write the json to a gzip
 	handle, err := os.Open(r.LocalFilePath)
@@ -92,14 +96,13 @@ func extractBackup(r *Restore) {
 
 	json.Unmarshal(bytestosend, &r.JSONData)
 
-	//r.JSONData = backupData
-
 	// explicitly close the file handles
 	gz.Close()
 	handle.Close()
 
 }
 
+// put the keys back in to consul.
 func runRestore(r *Restore, c *consul.Consul) {
 	for _, data := range r.JSONData {
 		_, err := c.Client.KV().Put(data, nil)
