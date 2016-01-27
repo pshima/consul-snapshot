@@ -19,7 +19,6 @@ This does not use any authentication in consul and uses environment variables fo
 Just run the binary, there are no options, use the environment variables for configuration.
 
 ## Todo List
-- Add ability to restore backups
 - Backup in chunks instead of all at once
 - Add tests
 - Add a web interface to view backups
