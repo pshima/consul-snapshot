@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -18,6 +19,7 @@ type Config struct {
 	BackupInterval time.Duration
 }
 
+// When starting, just set the hostname
 func init() {
 	var err error
 	hostname, err = os.Hostname()
@@ -26,33 +28,46 @@ func init() {
 	}
 }
 
-func checkEmpty(s []string) {
+// This checks a slice to see if anything is empty
+func checkEmpty(s []string) bool {
 	for _, item := range s {
 		if len(item) < 1 {
-			log.Fatal("Required env var missing, exiting")
+			return false
 		}
 	}
+	return true
 }
 
-func ParseConfig() Config {
-	conf := Config{}
+// Set the environment variables that are required
+func setEnvVars(conf *Config) error {
 	conf.S3Bucket = os.Getenv("S3BUCKET")
 	conf.S3Region = os.Getenv("S3REGION")
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
 	conf.S3SecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	backupInterval := os.Getenv("BACKUPINTERVAL")
-
-	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, backupInterval}
-	checkEmpty(envChecks)
-
 	backupStrToInt, err := strconv.Atoi(backupInterval)
 	if err != nil {
-		log.Fatalf("Unable to conver BACKUPINTERVAL environment var to integer: %v", err)
+		return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
+	}
+	backupTimeDuration := time.Duration(backupStrToInt) * time.Second
+	conf.BackupInterval = backupTimeDuration
+	return nil
+}
+
+// Parse the config and return it
+func ParseConfig() Config {
+	conf := Config{}
+
+	err := setEnvVars(&conf)
+	if err != nil {
+		log.Fatalf("[ERR] %v", err)
 	}
 
-	backupTimeDuration := time.Duration(backupStrToInt) * time.Second
+	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, string(conf.BackupInterval)}
+	if checkEmpty(envChecks) == false {
+		log.Fatal("[ERR] Required env var missing, exiting")
+	}
 
-	conf.BackupInterval = backupTimeDuration
 	conf.Hostname = hostname
 	return conf
 }
