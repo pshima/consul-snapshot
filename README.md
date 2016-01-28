@@ -9,7 +9,7 @@ consul-snapshot runs a small http server that can be used for consul health chec
 WARNING: consul-snapshot is still in early development use at your own risk.  Do not use this in production.
 
 ## Installation
-Grab the binary from [Releases](/releases)
+Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
 
 With go get: 
 ```
