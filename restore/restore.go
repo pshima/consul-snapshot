@@ -27,25 +27,32 @@ type Restore struct {
 }
 
 // Just the runner to call from the command line
-func RestoreRunner(restorepath string) int {
+func RestoreRunner(restorepath string, t string) int {
 	consulClient := &consul.Consul{Client: *consul.ConsulClient()}
 
 	conf := config.ParseConfig()
 
-	log.Print("[DEBUG] Restore starting")
-	doWork(conf, consulClient, restorepath)
+	log.Printf("[DEBUG] Starting restore of %s/%s", conf.S3Bucket, restorepath)
+	doWork(conf, consulClient, restorepath, t)
 	return 0
 }
 
 // actually do the work here.
-func doWork(conf config.Config, c *consul.Consul, restorePath string) {
+func doWork(conf config.Config, c *consul.Consul, restorePath string, t string) {
 	restore := &Restore{}
 	restore.StartTime = time.Now().Unix()
 	restore.RestorePath = restorePath
 
-	getRemoteBackup(restore, conf)
+	if t != "test" {
+		getRemoteBackup(restore, conf)
+	} else {
+		restore.LocalFilePath = "/tmp/acceptancetest.gz"
+	}
+
 	extractBackup(restore)
 	runRestore(restore, c)
+
+	log.Print("[INFO] Restore completed.")
 
 }
 
@@ -66,17 +73,20 @@ func getRemoteBackup(r *Restore, conf config.Config) {
 		Key:    &r.RestorePath,
 	}
 
-	log.Printf("[INFO] Downloading %v/%v from S3 in %v", string(conf.S3Bucket), r.LocalFilePath, string(conf.S3Region))
+	log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.LocalFilePath, string(conf.S3Region))
 	downloader := s3manager.NewDownloader(s3Conn)
 	_, err = downloader.Download(outFile, params)
 	if err != nil {
 		log.Fatalf("[ERR] Could not download file from S3!: %v", err)
 	}
 	outFile.Close()
+	log.Print("[INFO] Download completed")
 }
 
 // extract the backup to the Restore struct
 func extractBackup(r *Restore) {
+	log.Print("[INFO] Extracting Backup File")
+
 	// Write the json to a gzip
 	handle, err := os.Open(r.LocalFilePath)
 	if err != nil {
@@ -100,14 +110,24 @@ func extractBackup(r *Restore) {
 	gz.Close()
 	handle.Close()
 
+	totalKeys := len(r.JSONData)
+
+	log.Printf("[INFO] Extracted %v keys to restore", totalKeys)
+
 }
 
 // put the keys back in to consul.
 func runRestore(r *Restore, c *consul.Consul) {
+	restoredKeyCount := 0
+	errorCount := 0
 	for _, data := range r.JSONData {
 		_, err := c.Client.KV().Put(data, nil)
 		if err != nil {
+			errorCount++
 			log.Printf("Unable to restore key: %s, %v", data.Key, err)
 		}
+		restoredKeyCount++
 	}
+	log.Printf("[INFO] Restored %v keys with %v errors", restoredKeyCount, errorCount)
+
 }

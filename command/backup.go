@@ -12,7 +12,7 @@ type BackupCommand struct {
 
 func (c *BackupCommand) Run(args []string) int {
 	c.Ui.Info(fmt.Sprintf("v%v: Starting Consul Snapshot", c.Version))
-	response := backup.BackupRunner()
+	response := backup.BackupRunner("constant")
 	// Actually need to return the proper response here.
 	return response
 }

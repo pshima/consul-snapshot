@@ -45,6 +45,12 @@ func setEnvVars(conf *Config) error {
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
 	conf.S3SecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	backupInterval := os.Getenv("BACKUPINTERVAL")
+
+	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, backupInterval}
+	if checkEmpty(envChecks) == false {
+		log.Fatal("[ERR] Required env var missing, exiting")
+	}
+
 	backupStrToInt, err := strconv.Atoi(backupInterval)
 	if err != nil {
 		return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
@@ -61,11 +67,6 @@ func ParseConfig() Config {
 	err := setEnvVars(&conf)
 	if err != nil {
 		log.Fatalf("[ERR] %v", err)
-	}
-
-	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, string(conf.BackupInterval)}
-	if checkEmpty(envChecks) == false {
-		log.Fatal("[ERR] Required env var missing, exiting")
 	}
 
 	conf.Hostname = hostname

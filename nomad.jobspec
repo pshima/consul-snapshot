@@ -50,6 +50,7 @@ job "consul-snapshot" {
                     mbits = 100
                     # Request for a dynamic port
                     port "http" {
+                        static = 5001
                     }
 
                 }

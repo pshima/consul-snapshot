@@ -16,6 +16,7 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
+	"github.com/pshima/consul-snapshot/health"
 )
 
 // Backup is the backup itself including configuration and data
@@ -27,23 +28,34 @@ type Backup struct {
 	RemoteFilePath string
 }
 
-func BackupRunner() int {
+func BackupRunner(t string) int {
 	consulClient := &consul.Consul{Client: *consul.ConsulClient()}
 
 	conf := config.ParseConfig()
 
-	log.Printf("[DEBUG] Backup starting on interval: %v", conf.BackupInterval)
-	ticker := time.NewTicker(conf.BackupInterval)
-	for range ticker.C {
-		doWork(conf, consulClient)
+	// Start up the http server health checks
+	go health.StartServer()
+
+	if t == "test" {
+		doWork(conf, consulClient, t)
+	} else {
+		log.Printf("[DEBUG] Backup starting on interval: %v", conf.BackupInterval)
+		ticker := time.NewTicker(conf.BackupInterval)
+		for range ticker.C {
+			doWork(conf, consulClient, t)
+		}
 	}
 	return 0
 }
 
-func doWork(conf config.Config, c *consul.Consul) {
+func doWork(conf config.Config, c *consul.Consul, t string) {
 	// Loop over and over at interval time.
 	backup := &Backup{}
 	backup.StartTime = time.Now().Unix()
+
+	if t == "test" {
+		backup.LocalFileName = "acceptancetest.gz"
+	}
 
 	startstring := fmt.Sprintf("%v", backup.StartTime)
 	log.Printf("[INFO] Starting Backup At: %s", startstring)
@@ -54,10 +66,18 @@ func doWork(conf config.Config, c *consul.Consul) {
 	backup.KeysToJSON(c)
 	log.Print("[INFO] Writing Local Backup File")
 	writeBackupLocal(backup)
-	log.Print("[INFO] Writing Backup to Remote File")
-	writeBackupRemote(backup, conf)
-	log.Print("[INFO] Running post processing")
-	postProcess(backup, c)
+	if t != "test" {
+		log.Print("[INFO] Writing Backup to Remote File")
+		writeBackupRemote(backup, conf)
+	} else {
+		log.Print("[INFO] Skipping remove back during testing")
+	}
+	if t != "test" {
+		log.Print("[INFO] Running post processing")
+		postProcess(backup, c)
+	} else {
+		log.Print("[INFO] Skipping post processing during testing")
+	}
 }
 
 // Marshall all the keys to JSON
@@ -74,7 +94,9 @@ func writeBackupLocal(b *Backup) {
 	// Create a filename with a unix timestamp
 	startstring := fmt.Sprintf("%v", b.StartTime)
 	filename := fmt.Sprintf("consul.backup.%s.gz", startstring)
-	b.LocalFileName = filename
+	if b.LocalFileName == "" {
+		b.LocalFileName = filename
+	}
 	b.LocalFilePath = "/tmp"
 
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
@@ -151,4 +173,5 @@ func postProcess(b *Backup, c *consul.Consul) {
 	if err != nil {
 		log.Printf("Unable to remove temporary backup file!", err)
 	}
+
 }

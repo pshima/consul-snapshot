@@ -17,7 +17,7 @@ func (c *RestoreCommand) Run(args []string) int {
 	}
 
 	c.Ui.Info(fmt.Sprintf("v%v: Starting Consul Snapshot", c.Version))
-	response := restore.RestoreRunner(args[0])
+	response := restore.RestoreRunner(args[0], "single")
 	return response
 }
 

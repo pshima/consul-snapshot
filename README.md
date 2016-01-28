@@ -1,8 +1,12 @@
 # consul-snapshot
 
-consul-snapshot is a backup utility for Consul (https://www.consul.io).  This is slightly different than some other utilities out there as this runs as a daemon.  This is intended to run under Nomad (https://www.nomadproject.io).
+consul-snapshot is a backup and restore utility for Consul (https://www.consul.io).  This is slightly different than some other utilities out there as this runs as a daemon for backups and ships them to S3.  consul snapshot in its current state is designed only for disaster recovery scenarios and full restore.  There is no support for single key or path based backups at the moment.
 
-WARNING: consul-snapshot is still in early development use at your own risk.  This is not used in production.
+This is intended to run under Nomad (https://www.nomadproject.io) and connected to Consul (https://www.consul.io) and registered as a service with health checks.
+
+consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no service registartion as that is expected to be done in the nomad job spec.
+
+WARNING: consul-snapshot is still in early development use at your own risk.  Do not use this in production.
 
 ## Configuration
 Configuration is done from environment variables.
@@ -49,16 +53,40 @@ $ consul-snapshot backup
 
 Running a restore:
 ```
-consul-snapshot restore path/to/file/in/s3/bucket
+$ consul-snapshot restore consul.backup.1453928301.gz
+[INFO] v0.1.0: Starting Consul Snapshot
+2016/01/27 13:36:26 [DEBUG] Starting restore of testbucket/consul.backup.1453928301.gz
+2016/01/27 13:36:26 [INFO] Downloading testbucket/tmp/consul.backup.1453928301.gz from S3 in us-west-2
+2016/01/27 13:36:26 [INFO] Download completed
+2016/01/27 13:36:26 [INFO] Extracting Backup File
+2016/01/27 13:36:26 [INFO] Extracted 5 keys to restore
+2016/01/27 13:36:26 [INFO] Restored 5 keys with 0 errors
+2016/01/27 13:36:26 [INFO] Restore completed.
 ```
 
+## Testing
+
+There some unit tests but not near full coverage.  
+
+There is an acceptance test that:
+- Spins up a local consul agent in dev mode
+- Generates random k/v data and inserts it
+- Takes a backup locally
+- Wipes consul k/v
+- Restores the backup
+- Verifies that the k/v is still correct
+
+To run the acceptance test set ACCEPTANCE_TEST=1
+
 ## Todos
-- Add unit tests
+- Add more unit tests and fix acceptance testing logic to config itself
+- Add more configurable options
+- Add safety checks or confirm dialog for restore
+- Add restore dry run
+- Add checksumming/metadata on local file and upload meta first
 - Inspect app performance on larger data structures
-- Add consul health checks
 - Backup in chunks instead of all at once
 - Add a web interface to view backups
 - Add metrics
 - Add single key backups
 - Add options to specify paths
-- Register as a consul service with health checks on last backup time
