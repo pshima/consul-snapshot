@@ -29,3 +29,4 @@ _testmain.go
 /coverage.html
 
 /consul-snapshot
+/consul-snapshot_*

@@ -8,6 +8,22 @@ consul-snapshot runs a small http server that can be used for consul health chec
 
 WARNING: consul-snapshot is still in early development use at your own risk.  Do not use this in production.
 
+## Installation
+Grab the binary from [Releases](/releases)
+
+With go get: 
+```
+go get github.com/pshima/consul-snapshot
+```
+
+From source: 
+```
+git clone https://github.com/pshima/consul-snapshot
+cd consul-snapshot
+make
+make install
+```
+
 ## Configuration
 Configuration is done from environment variables.
 - S3BUCKET (the s3 bucket where backups should be delivered)
