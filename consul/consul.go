@@ -14,8 +14,8 @@ type Consul struct {
 	KeyDataLen int
 }
 
-// Create a consul client.
-func ConsulClient() *consulapi.Client {
+// Client creates a consul client from the consul api
+func Client() *consulapi.Client {
 	consul, err := consulapi.NewClient(consulapi.DefaultConfig())
 	if err != nil {
 		log.Fatalf("[ERR] Unable to create a consul client: %v", err)
@@ -23,7 +23,7 @@ func ConsulClient() *consulapi.Client {
 	return consul
 }
 
-// List all the keys from consul with no prefix.
+// ListKeys lists all the keys from consul with no prefix.
 func (c *Consul) ListKeys() {
 	listOpt := &consulapi.QueryOptions{
 		AllowStale:        false,

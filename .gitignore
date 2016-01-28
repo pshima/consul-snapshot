@@ -24,3 +24,8 @@ _testmain.go
 *.prof
 
 .DS_Store
+
+/coverage.out
+/coverage.html
+
+/consul-snapshot

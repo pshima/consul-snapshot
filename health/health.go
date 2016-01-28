@@ -40,6 +40,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 
 }
 
+// StartServer kicks up a http listener on :5001
 func StartServer() {
 	http.HandleFunc("/health", handler)
 	http.ListenAndServe(":5001", nil)

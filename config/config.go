@@ -10,6 +10,7 @@ import (
 
 var hostname string
 
+// Config is a struct to hold the backup configuration
 type Config struct {
 	S3Bucket       string
 	S3Region       string
@@ -60,7 +61,7 @@ func setEnvVars(conf *Config) error {
 	return nil
 }
 
-// Parse the config and return it
+// ParseConfig parses the config and returns it
 func ParseConfig() Config {
 	conf := Config{}
 

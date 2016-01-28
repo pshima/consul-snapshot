@@ -8,19 +8,24 @@ import (
 )
 
 var (
-	Commands        map[string]cli.CommandFactory
+	// Commands holds the command definition
+	Commands map[string]cli.CommandFactory
+	// CommandsInclude holds the list of available commands
 	CommandsInclude []string
 )
 
-var Ui cli.Ui
+// UI for commands
+var UI cli.Ui
 
 const (
-	ErrorPrefix  = "[ERR] "
+	//ErrorPrefix is the string used to prefix error messages
+	ErrorPrefix = "[ERR] "
+	//OutputPrefix is the string used to prefix regular output
 	OutputPrefix = "[INFO] "
 )
 
 func init() {
-	Ui = &cli.ColoredUi{
+	UI = &cli.ColoredUi{
 		OutputColor: cli.UiColorNone,
 		InfoColor:   cli.UiColorNone,
 		ErrorColor:  cli.UiColorRed,
@@ -35,7 +40,7 @@ func init() {
 	}
 
 	meta := command.Meta{
-		Ui: Ui,
+		UI: UI,
 	}
 
 	CommandsInclude = []string{

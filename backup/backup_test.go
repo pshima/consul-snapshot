@@ -66,7 +66,7 @@ func TestWriteBackupLocal(t *testing.T) {
 	f, err := ioutil.ReadFile(filepath)
 	shacheck.Write(f)
 	if err != nil {
-		t.Errorf("Unable to read local backup file", err)
+		t.Errorf("Unable to read local backup file: %v", err)
 	}
 
 	expectedSum := writeBackupChecksum
@@ -78,7 +78,7 @@ func TestWriteBackupLocal(t *testing.T) {
 
 	err = os.Remove(filepath)
 	if err != nil {
-		t.Errorf("Unable to remove temporary backup file!", err)
+		t.Errorf("Unable to remove temporary backup file: %v", err)
 	}
 
 }

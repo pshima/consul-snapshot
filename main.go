@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/mitchellh/cli"
@@ -39,7 +39,7 @@ func realMain() int {
 
 	exitCode, err := cli.Run()
 	if err != nil {
-		Ui.Error(fmt.Sprintf("Error executing CLI: %s", err.Error()))
+		log.Fatalf("Error executing CLI: %s", err.Error())
 		return 1
 	}
 

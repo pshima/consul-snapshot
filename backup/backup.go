@@ -28,8 +28,9 @@ type Backup struct {
 	RemoteFilePath string
 }
 
-func BackupRunner(t string) int {
-	consulClient := &consul.Consul{Client: *consul.ConsulClient()}
+// Runner is the main runner for a backup
+func Runner(t string) int {
+	consulClient := &consul.Consul{Client: *consul.Client()}
 
 	conf := config.ParseConfig()
 
@@ -80,7 +81,7 @@ func doWork(conf config.Config, c *consul.Consul, t string) {
 	}
 }
 
-// Marshall all the keys to JSON
+// KeysToJSON used to marshall the data and put it on a Backup object
 func (b *Backup) KeysToJSON(c *consul.Consul) {
 	jsonData, err := json.Marshal(c.KeyData)
 	if err != nil {
@@ -171,7 +172,7 @@ func postProcess(b *Backup, c *consul.Consul) {
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
 	err = os.Remove(filepath)
 	if err != nil {
-		log.Printf("Unable to remove temporary backup file!", err)
+		log.Printf("Unable to remove temporary backup file: %v", err)
 	}
 
 }

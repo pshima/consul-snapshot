@@ -102,7 +102,7 @@ func TestAcceptance(t *testing.T) {
 	// 5-10 seconds is about the time it takes for consul to wake up
 	time.Sleep(5 * time.Second)
 
-	c := consul.ConsulClient()
+	c := consul.Client()
 
 	seedData := &Seeder{}
 
@@ -120,7 +120,7 @@ func TestAcceptance(t *testing.T) {
 		}
 	}
 
-	backup.BackupRunner("test")
+	backup.Runner("test")
 
 	_, err = c.KV().DeleteTree("", nil)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 		t.Errorf("Unable to clear consul kv store after backup; %v", err)
 	}
 
-	restore.RestoreRunner("test", "test")
+	restore.Runner("test", "test")
 
 	for _, kv := range seedData.Data {
 		//log.Printf("SEED: %v | %v", kv.Key, string(kv.Value))

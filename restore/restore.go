@@ -19,6 +19,7 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 )
 
+// Restore is a struct to hold data about a single restore
 type Restore struct {
 	StartTime     int64
 	JSONData      consulapi.KVPairs
@@ -26,9 +27,9 @@ type Restore struct {
 	RestorePath   string
 }
 
-// Just the runner to call from the command line
-func RestoreRunner(restorepath string, t string) int {
-	consulClient := &consul.Consul{Client: *consul.ConsulClient()}
+// Runner runs the restore
+func Runner(restorepath string, t string) int {
+	consulClient := &consul.Consul{Client: *consul.Client()}
 
 	conf := config.ParseConfig()
 
