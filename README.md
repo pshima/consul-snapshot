@@ -4,7 +4,7 @@ consul-snapshot is a backup and restore utility for Consul (https://www.consul.i
 
 This is intended to run under Nomad (https://www.nomadproject.io) and connected to Consul (https://www.consul.io) and registered as a service with health checks.
 
-consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no service registartion as that is expected to be done in the nomad job spec.
+consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no consul service registration as that is expected to be done in the nomad job spec.
 
 WARNING: consul-snapshot is still in early development use at your own risk.  Do not use this in production.
 
@@ -66,7 +66,7 @@ $ consul-snapshot restore consul.backup.1453928301.gz
 
 ## Testing
 
-There some unit tests but not near full coverage.  
+There are some unit tests but not near full coverage.  
 
 There is an acceptance test that:
 - Spins up a local consul agent in dev mode
