@@ -61,7 +61,7 @@ func (b *Backup) doWork(t string) {
 	log.Print("[INFO] Listing keys from consul")
 
 	b.Client.ListKeys()
-	log.Print("[INFO] Converting keys to JSON")
+	log.Printf("[INFO] Converting %v keys to JSON", b.Client.KeyDataLen)
 	b.KeysToJSON()
 	log.Print("[INFO] Writing Local Backup File")
 	b.writeBackupLocal()
