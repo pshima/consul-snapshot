@@ -120,7 +120,8 @@ func TestAcceptance(t *testing.T) {
 		}
 	}
 
-	backup.Runner("test")
+	b := &backup.Backup{}
+	b.Runner("test")
 
 	_, err = c.KV().DeleteTree("", nil)
 	if err != nil {
