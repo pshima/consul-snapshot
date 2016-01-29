@@ -77,6 +77,7 @@ func (b *Backup) doWork(t string) {
 	} else {
 		log.Print("[INFO] Skipping post processing during testing")
 	}
+	log.Print("[INFO] Backup completed successfully")
 }
 
 // KeysToJSON used to marshall the data and put it on a Backup object
