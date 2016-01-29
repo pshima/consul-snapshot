@@ -1,4 +1,4 @@
-# consul-snapshot
+# consul-snapshot [![](https://travis-ci.org/pshima/consul-snapshot.svg)](https://travis-ci.org/pshima/consul-snapshot)
 
 consul-snapshot is a backup and restore utility for Consul (https://www.consul.io).  This is slightly different than some other utilities out there as this runs as a daemon for backups and ships them to S3.  consul snapshot in its current state is designed only for disaster recovery scenarios and full restore.  There is no support for single key or path based backups at the moment.
 
