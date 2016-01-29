@@ -26,20 +26,22 @@ var (
 )
 
 // Setup some basic structs we can use across tests
-func testingStructs() (*consul.Consul, *Backup) {
+func testingStructs() *Backup {
 	consulClient := &consul.Consul{}
 	consulClient.KeyData = kvpairlist
-	backup := &Backup{}
+	backup := &Backup{
+		Client: consulClient,
+	}
 	backup.StartTime = time.Now().Unix()
 
-	return consulClient, backup
+	return backup
 
 }
 
 // just see if we get the same encoded results back
 func TestKeysToJSON(t *testing.T) {
-	consulClient, backup := testingStructs()
-	backup.KeysToJSON(consulClient)
+	backup := testingStructs()
+	backup.KeysToJSON()
 
 	marshallSouce, err := json.Marshal(kvpairlist)
 	if err != nil {
@@ -56,10 +58,10 @@ func TestKeysToJSON(t *testing.T) {
 
 // Write the file locally and then check that we get the same checksum back
 func TestWriteBackupLocal(t *testing.T) {
-	consulClient, backup := testingStructs()
-	backup.KeysToJSON(consulClient)
+	backup := testingStructs()
+	backup.KeysToJSON()
 
-	writeBackupLocal(backup)
+	backup.writeBackupLocal()
 	shacheck := sha256.New()
 
 	filepath := fmt.Sprintf("%v/%v", backup.LocalFilePath, backup.LocalFileName)

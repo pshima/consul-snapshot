@@ -26,64 +26,62 @@ type Backup struct {
 	LocalFileName  string
 	LocalFilePath  string
 	RemoteFilePath string
+	Config         config.Config
+	Client         *consul.Consul
 }
 
 // Runner is the main runner for a backup
-func Runner(t string) int {
-	consulClient := &consul.Consul{Client: *consul.Client()}
-
-	conf := config.ParseConfig()
-
+func (b *Backup) Runner(t string) int {
 	// Start up the http server health checks
 	go health.StartServer()
 
 	if t == "test" {
-		doWork(conf, consulClient, t)
+		b.doWork(t)
 	} else {
-		log.Printf("[DEBUG] Backup starting on interval: %v", conf.BackupInterval)
-		ticker := time.NewTicker(conf.BackupInterval)
+		log.Printf("[DEBUG] Backup starting on interval: %v", b.Config.BackupInterval)
+		ticker := time.NewTicker(b.Config.BackupInterval)
 		for range ticker.C {
-			doWork(conf, consulClient, t)
+			b.doWork(t)
 		}
 	}
 	return 0
 }
 
-func doWork(conf config.Config, c *consul.Consul, t string) {
+func (b *Backup) doWork(t string) {
 	// Loop over and over at interval time.
-	backup := &Backup{}
-	backup.StartTime = time.Now().Unix()
+	b.StartTime = time.Now().Unix()
 
 	if t == "test" {
-		backup.LocalFileName = "acceptancetest.gz"
+		b.LocalFileName = "acceptancetest.gz"
 	}
 
-	startstring := fmt.Sprintf("%v", backup.StartTime)
-	log.Printf("[INFO] Starting Backup At: %s", startstring)
+	startString := fmt.Sprintf("%v", b.StartTime)
 
+	log.Printf("[INFO] Starting Backup At: %s", startString)
 	log.Print("[INFO] Listing keys from consul")
-	c.ListKeys()
+
+	b.Client.ListKeys()
 	log.Print("[INFO] Converting keys to JSON")
-	backup.KeysToJSON(c)
+	b.KeysToJSON()
 	log.Print("[INFO] Writing Local Backup File")
-	writeBackupLocal(backup)
+	b.writeBackupLocal()
 	if t != "test" {
 		log.Print("[INFO] Writing Backup to Remote File")
-		writeBackupRemote(backup, conf)
+		b.writeBackupRemote()
 	} else {
-		log.Print("[INFO] Skipping remove back during testing")
+		log.Print("[INFO] Skipping remote backup during testing")
 	}
 	if t != "test" {
 		log.Print("[INFO] Running post processing")
-		postProcess(backup, c)
+		b.postProcess()
 	} else {
 		log.Print("[INFO] Skipping post processing during testing")
 	}
 }
 
 // KeysToJSON used to marshall the data and put it on a Backup object
-func (b *Backup) KeysToJSON(c *consul.Consul) {
-	jsonData, err := json.Marshal(c.KeyData)
+func (b *Backup) KeysToJSON() {
+	jsonData, err := json.Marshal(b.Client.KeyData)
 	if err != nil {
 		log.Fatalf("[ERR] Could not encode keys to json!: %v", err)
 	}
@@ -91,10 +89,10 @@ func (b *Backup) KeysToJSON(c *consul.Consul) {
 }
 
 // Write a local gzipped file in to tmp
-func writeBackupLocal(b *Backup) {
+func (b *Backup) writeBackupLocal() {
 	// Create a filename with a unix timestamp
-	startstring := fmt.Sprintf("%v", b.StartTime)
-	filename := fmt.Sprintf("consul.backup.%s.gz", startstring)
+	startString := fmt.Sprintf("%v", b.StartTime)
+	filename := fmt.Sprintf("consul.backup.%s.gz", startString)
 	if b.LocalFileName == "" {
 		b.LocalFileName = filename
 	}
@@ -126,8 +124,8 @@ func writeBackupLocal(b *Backup) {
 
 // Write the local backup file to S3.
 // There are no tests for this remote operation
-func writeBackupRemote(b *Backup, conf config.Config) {
-	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
+func (b *Backup) writeBackupRemote() {
+	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
 
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
 
@@ -141,12 +139,12 @@ func writeBackupRemote(b *Backup, conf config.Config) {
 
 	// Create the params to pass into the actual uploader
 	params := &s3manager.UploadInput{
-		Bucket: &conf.S3Bucket,
+		Bucket: &b.Config.S3Bucket,
 		Key:    &b.RemoteFilePath,
 		Body:   bytes.NewReader(localFileContents),
 	}
 
-	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(conf.S3Bucket), b.RemoteFilePath, string(conf.S3Region))
+	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
 	uploader := s3manager.NewUploader(s3Conn)
 	_, err = uploader.Upload(params)
 	if err != nil {
@@ -156,7 +154,7 @@ func writeBackupRemote(b *Backup, conf config.Config) {
 
 // Run post processing on the backup, acking the key and removing and temp files.
 // There are no tests for the remote operation.
-func postProcess(b *Backup, c *consul.Consul) {
+func (b *Backup) postProcess() {
 	// Mark a key in consul for our last backup time.
 	writeOpt := &consulapi.WriteOptions{}
 	startstring := fmt.Sprintf("%v", b.StartTime)
@@ -164,7 +162,7 @@ func postProcess(b *Backup, c *consul.Consul) {
 	var err error
 
 	lastbackup := &consulapi.KVPair{Key: "service/consul-snapshot/lastbackup", Value: []byte(startstring)}
-	_, err = c.Client.KV().Put(lastbackup, writeOpt)
+	_, err = b.Client.Client.KV().Put(lastbackup, writeOpt)
 	if err != nil {
 		log.Fatalf("[ERR] Failed writing last backup timestamp to consul: %v", err)
 	}
@@ -174,5 +172,4 @@ func postProcess(b *Backup, c *consul.Consul) {
 	if err != nil {
 		log.Printf("Unable to remove temporary backup file: %v", err)
 	}
-
 }
