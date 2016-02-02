@@ -130,7 +130,10 @@ func (b *Backup) writeBackupRemote() {
 
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
 
-	b.RemoteFilePath = b.LocalFileName
+	t := time.Unix(b.StartTime, 0)
+	remotePath := fmt.Sprintf("backups/%v/%v/%v/%v", t.Year(), t.Month(), t.Day(), b.LocalFileName)
+
+	b.RemoteFilePath = remotePath
 
 	// re-read the compressed file.  There is probably a better way to do this
 	localFileContents, err := ioutil.ReadFile(filepath)
