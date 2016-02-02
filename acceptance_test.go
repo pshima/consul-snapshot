@@ -120,7 +120,13 @@ func TestAcceptance(t *testing.T) {
 		}
 	}
 
-	b := &backup.Backup{}
+	t.Log("Starting Backup")
+	client := &consul.Consul{Client: *consul.Client()}
+
+	b := &backup.Backup{
+		Client: client,
+	}
+
 	b.Runner("test")
 
 	_, err = c.KV().DeleteTree("", nil)

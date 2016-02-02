@@ -8,6 +8,13 @@ deps:
 	go get github.com/golang/lint/golint
 	go get
 
+updatedeps:
+	go get -u -v github.com/aws/aws-sdk-go
+	go get -u -v  github.com/hashicorp/consul
+	go get -u -v  github.com/Pallinder/go-randomdata
+	go get -u -v  github.com/mitchellh/cli
+	go get -u -v  github.com/golang/lint/golint
+
 build: deps
 	go build
 

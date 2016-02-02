@@ -106,3 +106,5 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Add metrics
 - Add single key backups
 - Add options to specify paths
+- Add ability to encrypt backups before uploading
+
