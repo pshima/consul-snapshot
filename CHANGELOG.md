@@ -1,3 +1,6 @@
+## 0.1.2
+* Fix regression in remote file naming
+
 ## 0.1.1
 * Explicitly state that the backup completed successfully
 * Add count of keys to log output
