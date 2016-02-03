@@ -31,23 +31,32 @@ type Backup struct {
 }
 
 // Runner is the main runner for a backup
-func (b *Backup) Runner(t string) int {
+func Runner(t string) int {
 	// Start up the http server health checks
 	go health.StartServer()
 
+	conf := config.ParseConfig()
+	client := &consul.Consul{Client: *consul.Client()}
+
 	if t == "test" {
-		b.doWork(t)
+		doWork(conf, client, t)
 	} else {
-		log.Printf("[DEBUG] Backup starting on interval: %v", b.Config.BackupInterval)
-		ticker := time.NewTicker(b.Config.BackupInterval)
+		log.Printf("[DEBUG] Backup starting on interval: %v", conf.BackupInterval)
+		ticker := time.NewTicker(conf.BackupInterval)
 		for range ticker.C {
-			b.doWork(t)
+			doWork(conf, client, t)
 		}
 	}
 	return 0
 }
 
-func (b *Backup) doWork(t string) {
+func doWork(conf config.Config, client *consul.Consul, t string) {
+
+	b := &Backup{
+		Config: conf,
+		Client: client,
+	}
+
 	// Loop over and over at interval time.
 	b.StartTime = time.Now().Unix()
 
@@ -78,6 +87,7 @@ func (b *Backup) doWork(t string) {
 		log.Print("[INFO] Skipping post processing during testing")
 	}
 	log.Print("[INFO] Backup completed successfully")
+
 }
 
 // KeysToJSON used to marshall the data and put it on a Backup object
@@ -131,7 +141,7 @@ func (b *Backup) writeBackupRemote() {
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
 
 	t := time.Unix(b.StartTime, 0)
-	remotePath := fmt.Sprintf("backups/%v/%v/%v/%v", t.Year(), t.Month(), t.Day(), b.LocalFileName)
+	remotePath := fmt.Sprintf("backups/%v/%d/%v/%v", t.Year(), t.Month(), t.Day(), b.LocalFileName)
 
 	b.RemoteFilePath = remotePath
 
