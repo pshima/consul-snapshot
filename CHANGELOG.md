@@ -1,3 +1,6 @@
+## 0.1.3
+* Add configurable tmp dir
+
 ## 0.1.2
 * Fix regression in remote file naming
 
