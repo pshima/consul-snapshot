@@ -61,7 +61,7 @@ func doWork(conf config.Config, c *consul.Consul, restorePath string, t string) 
 func getRemoteBackup(r *Restore, conf config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
-	r.LocalFilePath = fmt.Sprintf("%v/%v", "/tmp", r.RestorePath)
+	r.LocalFilePath = fmt.Sprintf("%v/%v", conf.TmpDir, r.RestorePath)
 
 	outFile, err := os.Create(r.LocalFilePath)
 	if err != nil {

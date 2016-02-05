@@ -99,7 +99,7 @@ func (b *Backup) KeysToJSON() {
 	b.JSONData = jsonData
 }
 
-// Write a local gzipped file in to tmp
+// Write a local gzipped file in the temporary dir
 func (b *Backup) writeBackupLocal() {
 	// Create a filename with a unix timestamp
 	startString := fmt.Sprintf("%v", b.StartTime)
@@ -107,7 +107,7 @@ func (b *Backup) writeBackupLocal() {
 	if b.LocalFileName == "" {
 		b.LocalFileName = filename
 	}
-	b.LocalFilePath = "/tmp"
+	b.LocalFilePath = b.Config.TmpDir
 
 	filepath := fmt.Sprintf("%v/%v", b.LocalFilePath, b.LocalFileName)
 

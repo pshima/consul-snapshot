@@ -18,6 +18,7 @@ type Config struct {
 	S3SecretKey    string
 	Hostname       string
 	BackupInterval time.Duration
+	TmpDir         string
 }
 
 // When starting, just set the hostname
@@ -46,6 +47,12 @@ func setEnvVars(conf *Config) error {
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
 	conf.S3SecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	backupInterval := os.Getenv("BACKUPINTERVAL")
+	conf.TmpDir = os.Getenv("SNAPSHOT_TMP_DIR")
+
+	// if the environment variable isn't set, just set the dir to /tmp
+	if conf.TmpDir == "" {
+		conf.TmpDir = "/tmp"
+	}
 
 	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, backupInterval}
 	if checkEmpty(envChecks) == false {
