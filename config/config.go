@@ -54,7 +54,7 @@ func setEnvVars(conf *Config) error {
 		conf.TmpDir = "/tmp"
 	}
 
-	envChecks := []string{conf.S3Bucket, conf.S3Region, conf.S3AccessKey, conf.S3SecretKey, backupInterval}
+	envChecks := []string{conf.S3Bucket, conf.S3Region, backupInterval}
 	if checkEmpty(envChecks) == false {
 		log.Fatal("[ERR] Required env var missing, exiting")
 	}
