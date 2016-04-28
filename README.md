@@ -6,7 +6,7 @@ This is intended to run under Nomad (https://www.nomadproject.io) and connected 
 
 consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no consul service registration as that is expected to be done in the nomad job spec.
 
-WARNING: consul-snapshot is still in early development use at your own risk.  Do not use this in production.
+WARNING: consul-snapshot is still in early development but it is production ready with several months of production use.
 
 ## Installation
 Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
