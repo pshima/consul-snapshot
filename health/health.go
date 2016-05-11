@@ -18,6 +18,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 	lastBackup, _, err := consul.KV().Get("service/consul-snapshot/lastbackup", queryOpt)
 	if err != nil || lastBackup == nil {
 		http.Error(resp, "No previous backup detected or unable to get backup key!", 500)
+		return
 	}
 
 	lastTimestamp := string(lastBackup.Value)
@@ -25,6 +26,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 	timestampInt, err := strconv.ParseInt(lastTimestamp, 10, 64)
 	if err != nil {
 		http.Error(resp, "[ERR] Unable to convert last timestamp to int", 500)
+		return
 	}
 
 	nowtime := time.Now().Unix()
@@ -33,6 +35,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 
 	if timediff > 3600 {
 		http.Error(resp, "[ERR] Backup older than 1 hour", 500)
+		return
 	} else {
 		msg := fmt.Sprintf("Last backup %v seconds ago", timediff)
 		resp.Write([]byte(msg))
