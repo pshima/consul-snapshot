@@ -46,38 +46,31 @@ Authentication is done through the above environment variables.
 ## Running
 Running a backup:
 ```
-$ consul-snapshot backup
-[INFO] v0.1.0: Starting Consul Snapshot
-2016/01/27 06:07:18 [DEBUG] Backup starting on interval: 30s
-2016/01/27 06:07:48 [INFO] Starting Backup At: 1453874868
-2016/01/27 06:07:48 [INFO] Listing keys from consul
-2016/01/27 06:07:48 [INFO] Converting keys to JSON
-2016/01/27 06:07:48 [INFO] Writing Local Backup File
-2016/01/27 06:07:48 [DEBUG] Wrote 37362 bytes to file, /tmp/consul.backup.1453874868.gz
-2016/01/27 06:07:48 [INFO] Writing Backup to Remote File
-2016/01/27 06:07:48 [INFO] Uploading testbucket/consul.backup.1453874868.gz to S3 in us-west-2
-2016/01/27 06:07:48 [INFO] Running post processing
-2016/01/27 06:08:18 [INFO] Starting Backup At: 1453874898
-2016/01/27 06:08:18 [INFO] Listing keys from consul
-2016/01/27 06:08:18 [INFO] Converting keys to JSON
-2016/01/27 06:08:18 [INFO] Writing Local Backup File
-2016/01/27 06:08:18 [DEBUG] Wrote 37362 bytes to file, /tmp/consul.backup.1453874898.gz
-2016/01/27 06:08:18 [INFO] Writing Backup to Remote File
-2016/01/27 06:08:18 [INFO] Uploading testbucket/consul.backup.1453874898.gz to S3 in us-west-2
-2016/01/27 06:08:19 [INFO] Running post processing
+% consul-snapshot backup
+[INFO] v0.1.4: Starting Consul Snapshot
+2016/07/08 12:01:47 [DEBUG] Backup starting on interval: 5s
+2016/07/08 12:01:52 [INFO] Starting Backup At: 1468004512
+2016/07/08 12:01:52 [INFO] Listing keys from consul
+2016/07/08 12:01:52 [INFO] Converting 2 keys to JSON
+2016/07/08 12:01:52 [INFO] Writing Local Backup File
+2016/07/08 12:01:52 [DEBUG] Wrote 257 bytes to file, /tmp/consul.backup.1468004512.gz
+2016/07/08 12:01:52 [INFO] Writing Backup to Remote File
+2016/07/08 12:01:52 [INFO] Uploading test9898989/backups/2016/7/8/consul.backup.1468004512.gz to S3 in us-west-2
+2016/07/08 12:01:52 [INFO] Running post processing
+2016/07/08 12:01:52 [INFO] Backup completed successfully
 ```
 
 Running a restore:
 ```
-$ consul-snapshot restore consul.backup.1453928301.gz
-[INFO] v0.1.0: Starting Consul Snapshot
-2016/01/27 13:36:26 [DEBUG] Starting restore of testbucket/consul.backup.1453928301.gz
-2016/01/27 13:36:26 [INFO] Downloading testbucket/tmp/consul.backup.1453928301.gz from S3 in us-west-2
-2016/01/27 13:36:26 [INFO] Download completed
-2016/01/27 13:36:26 [INFO] Extracting Backup File
-2016/01/27 13:36:26 [INFO] Extracted 5 keys to restore
-2016/01/27 13:36:26 [INFO] Restored 5 keys with 0 errors
-2016/01/27 13:36:26 [INFO] Restore completed.
+% consul-snapshot restore backups/2016/7/8/consul.backup.1468004512.gz
+[INFO] v0.1.4: Starting Consul Snapshot
+2016/07/08 12:23:14 [DEBUG] Starting restore of test9898989/backups/2016/7/8/consul.backup.1468004512.gz
+2016/07/08 12:23:14 [INFO] Downloading test9898989/tmp/backups/2016/7/8/consul.backup.1468004512.gz from S3 in us-west-2
+2016/07/08 12:23:14 [INFO] Download completed
+2016/07/08 12:23:14 [INFO] Extracting Backup File
+2016/07/08 12:23:14 [INFO] Extracted 2 keys to restore
+2016/07/08 12:23:14 [INFO] Restored 2 keys with 0 errors
+2016/07/08 12:23:14 [INFO] Restore completed.
 ```
 
 ## Testing
