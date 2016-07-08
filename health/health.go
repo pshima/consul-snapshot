@@ -36,10 +36,10 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 	if timediff > 3600 {
 		http.Error(resp, "[ERR] Backup older than 1 hour", 500)
 		return
-	} else {
-		msg := fmt.Sprintf("Last backup %v seconds ago", timediff)
-		resp.Write([]byte(msg))
 	}
+
+	msg := fmt.Sprintf("Last backup %v seconds ago", timediff)
+	resp.Write([]byte(msg))
 
 }
 
