@@ -1,3 +1,6 @@
+## 0.1.4
+* Fix regression in temp file restore location
+
 ## 0.1.3
 * Add configurable tmp dir
 

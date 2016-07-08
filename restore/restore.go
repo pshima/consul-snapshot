@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -62,6 +63,13 @@ func getRemoteBackup(r *Restore, conf config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
 	r.LocalFilePath = fmt.Sprintf("%v/%v", conf.TmpDir, r.RestorePath)
+
+	localFileDir := filepath.Dir(r.LocalFilePath)
+
+	err := os.MkdirAll(localFileDir, 0755)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to create local restore directory!: %v", err)
+	}
 
 	outFile, err := os.Create(r.LocalFilePath)
 	if err != nil {
