@@ -1,5 +1,8 @@
-## 0.1.4
+## 0.1.5
 * Fix regression in temp file restore location
+
+## 0.1.4
+* Make aws credentials not required
 
 ## 0.1.3
 * Add configurable tmp dir

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	version = "0.1.4"
+	version = "0.1.5"
 )
 
 func main() {
