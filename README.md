@@ -88,7 +88,7 @@ There is an acceptance test that:
 To run the acceptance test set ACCEPTANCE_TEST=1
 
 ## Todos
-- Add more unit tests and fix acceptance testing logic to config itself
+- Add more unit tests
 - Add more configurable options
 - Add safety checks or confirm dialog for restore
 - Add restore dry run
