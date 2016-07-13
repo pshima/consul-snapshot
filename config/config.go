@@ -19,6 +19,8 @@ type Config struct {
 	Hostname       string
 	BackupInterval time.Duration
 	TmpDir         string
+	Acceptance     bool
+	Version        string
 }
 
 // When starting, just set the hostname
@@ -41,38 +43,49 @@ func checkEmpty(s []string) bool {
 }
 
 // Set the environment variables that are required
-func setEnvVars(conf *Config) error {
+func setEnvVars(conf *Config, tests bool) error {
 	conf.S3Bucket = os.Getenv("S3BUCKET")
 	conf.S3Region = os.Getenv("S3REGION")
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
 	conf.S3SecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	backupInterval := os.Getenv("BACKUPINTERVAL")
 	conf.TmpDir = os.Getenv("SNAPSHOT_TMP_DIR")
+	acceptanceTest := os.Getenv("ACCEPTANCE_TEST")
 
 	// if the environment variable isn't set, just set the dir to /tmp
 	if conf.TmpDir == "" {
 		conf.TmpDir = "/tmp"
 	}
 
-	envChecks := []string{conf.S3Bucket, conf.S3Region, backupInterval}
-	if checkEmpty(envChecks) == false {
-		log.Fatal("[ERR] Required env var missing, exiting")
+	// if the environment variable isn't set, require specific env vars
+	if acceptanceTest == "" {
+		conf.Acceptance = false
+		if tests {
+			log.Println("Running tests, skipping ENV var requirements")
+		} else {
+			envChecks := []string{conf.S3Bucket, conf.S3Region, backupInterval}
+			if checkEmpty(envChecks) == false {
+				log.Fatal("[ERR] Required env var missing, exiting")
+			}
+			backupStrToInt, err := strconv.Atoi(backupInterval)
+			if err != nil {
+				return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
+			}
+			backupTimeDuration := time.Duration(backupStrToInt) * time.Second
+			conf.BackupInterval = backupTimeDuration
+		}
+	} else {
+		conf.Acceptance = true
 	}
 
-	backupStrToInt, err := strconv.Atoi(backupInterval)
-	if err != nil {
-		return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
-	}
-	backupTimeDuration := time.Duration(backupStrToInt) * time.Second
-	conf.BackupInterval = backupTimeDuration
 	return nil
 }
 
 // ParseConfig parses the config and returns it
-func ParseConfig() Config {
+func ParseConfig(tests bool) Config {
 	conf := Config{}
 
-	err := setEnvVars(&conf)
+	err := setEnvVars(&conf, tests)
 	if err != nil {
 		log.Fatalf("[ERR] %v", err)
 	}

@@ -29,26 +29,26 @@ type Restore struct {
 }
 
 // Runner runs the restore
-func Runner(restorepath string, t string) int {
+func Runner(restorepath string) int {
 	consulClient := &consul.Consul{Client: *consul.Client()}
 
-	conf := config.ParseConfig()
+	conf := config.ParseConfig(false)
 
 	log.Printf("[DEBUG] Starting restore of %s/%s", conf.S3Bucket, restorepath)
-	doWork(conf, consulClient, restorepath, t)
+	doWork(conf, consulClient, restorepath)
 	return 0
 }
 
 // actually do the work here.
-func doWork(conf config.Config, c *consul.Consul, restorePath string, t string) {
+func doWork(conf config.Config, c *consul.Consul, restorePath string) {
 	restore := &Restore{}
 	restore.StartTime = time.Now().Unix()
 	restore.RestorePath = restorePath
 
-	if t != "test" {
-		getRemoteBackup(restore, conf)
-	} else {
+	if conf.Acceptance {
 		restore.LocalFilePath = "/tmp/acceptancetest.gz"
+	} else {
+		getRemoteBackup(restore, conf)
 	}
 
 	extractBackup(restore)

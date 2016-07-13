@@ -2,6 +2,7 @@ package consul
 
 import (
 	"log"
+	"strings"
 
 	consulapi "github.com/hashicorp/consul/api"
 )
@@ -12,6 +13,10 @@ type Consul struct {
 	Client     consulapi.Client
 	KeyData    consulapi.KVPairs
 	KeyDataLen int
+	PQData     []*consulapi.PreparedQueryDefinition
+	PQDataLen  int
+	ACLData    []*consulapi.ACLEntry
+	ACLDataLen int
 }
 
 // Client creates a consul client from the consul api
@@ -35,4 +40,42 @@ func (c *Consul) ListKeys() {
 	}
 	c.KeyData = keys
 	c.KeyDataLen = len(keys)
+}
+
+// ListPQs lists all the prepared queries from consul
+func (c *Consul) ListPQs() {
+	listOpt := &consulapi.QueryOptions{
+		AllowStale:        false,
+		RequireConsistent: true,
+	}
+	pqs, _, err := c.Client.PreparedQuery().List(listOpt)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to list PQs: %v", err)
+	}
+
+	c.PQData = pqs
+	c.PQDataLen = len(pqs)
+}
+
+// ListACLs lists all the prepared queries from consul
+func (c *Consul) ListACLs() {
+	listOpt := &consulapi.QueryOptions{
+		AllowStale:        false,
+		RequireConsistent: true,
+	}
+
+	acls, _, err := c.Client.ACL().List(listOpt)
+	if err != nil {
+		// Really don't like this but seems to be the only way to detect
+		if strings.Contains(err.Error(), "401 (ACL support disabled)") {
+			log.Print("[INFO] ACL support detected as disbaled, skipping")
+			c.ACLData = []*consulapi.ACLEntry{}
+			c.ACLDataLen = 0
+		} else {
+			log.Fatalf("[ERR] Unable to list ACLS: %v", err)
+		}
+	}
+
+	c.ACLData = acls
+	c.ACLDataLen = len(acls)
 }

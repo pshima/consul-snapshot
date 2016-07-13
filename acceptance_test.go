@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"reflect"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pshima/consul-snapshot/backup"
+	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/restore"
 )
@@ -91,7 +91,8 @@ func checkKey(c *consulapi.Client, kv *consulapi.KVPair) error {
 
 func TestAcceptance(t *testing.T) {
 	var err error
-	if os.Getenv("ACCEPTANCE_TEST") == "" {
+	conf := config.ParseConfig(true)
+	if conf.Acceptance == false {
 		t.Skip("Skipping acceptance test, Set ACCEPTANCE_TEST=1 to run")
 	}
 	command := "consul"
@@ -122,7 +123,7 @@ func TestAcceptance(t *testing.T) {
 
 	t.Log("Starting Backup")
 
-	backup.Runner("test")
+	backup.Runner("acc")
 
 	_, err = c.KV().DeleteTree("", nil)
 	if err != nil {
@@ -132,7 +133,7 @@ func TestAcceptance(t *testing.T) {
 		t.Errorf("Unable to clear consul kv store after backup; %v", err)
 	}
 
-	restore.Runner("test", "test")
+	restore.Runner("test")
 
 	for _, kv := range seedData.Data {
 		//log.Printf("SEED: %v | %v", kv.Key, string(kv.Value))
