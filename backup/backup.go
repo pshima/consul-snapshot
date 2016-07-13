@@ -2,8 +2,11 @@ package backup
 
 import (
 	"bytes"
-	"compress/gzip"
-	"crypto/md5"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,52 +24,53 @@ import (
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/health"
+	"golang.org/x/crypto/scrypt"
 )
 
 // Backup is the backup itself including configuration and data
 type Backup struct {
 	StartTime        int64
-	EndTime          int64
 	KVJSONData       []byte
 	LocalKVFileName  string
-	KVFileChecksum   []byte
+	KVFileChecksum   string
 	PQJSONData       []byte
 	LocalPQFileName  string
-	PQFileChecksum   []byte
+	PQFileChecksum   string
 	ACLJSONData      []byte
 	LocalACLFileName string
-	ACLFileChecksum  []byte
+	ACLFileChecksum  string
 	LocalFilePath    string
 	RemoteFilePath   string
-	Config           config.Config
+	Config           *config.Config
 	Client           *consul.Consul
 	FullFilename     string
 }
 
-// backupMeta holds the meta struct to write inside the compressed data
-type backupMeta struct {
+// BackupMeta holds the meta struct to write inside the compressed data
+type BackupMeta struct {
 	ConsulSnapshotVersion string
-	KVChecksum            []byte
-	PQChecksum            []byte
-	ACLChecksum           []byte
+	KVSha256              string
+	PQSha256              string
+	ACLSha256             string
+	NodeName              string
 	StartTime             int64
 	EndTime               int64
 }
 
-func calcMD5(path string) ([]byte, error) {
+func calcSha256(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer file.Close()
 
-	calc := md5.New()
+	calc := sha256.New()
 	_, err = io.Copy(calc, file)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return calc.Sum(nil), nil
+	return hex.EncodeToString(calc.Sum(nil)), nil
 }
 
 // Runner is the main runner for a backup
@@ -90,7 +94,7 @@ func Runner(version string) int {
 	return 0
 }
 
-func doWork(conf config.Config, client *consul.Consul) {
+func doWork(conf *config.Config, client *consul.Consul) {
 
 	b := &Backup{
 		Config: conf,
@@ -127,7 +131,7 @@ func doWork(conf config.Config, client *consul.Consul) {
 		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalKVFileName, err)
 	}
 
-	kvchecksum, err := calcMD5(filepath.Join(b.LocalFilePath, b.LocalKVFileName))
+	kvchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalKVFileName))
 	if err != nil {
 		log.Fatalf("[ERR] to generate checksum for file %s: %v", b.LocalKVFileName, err)
 	}
@@ -138,7 +142,7 @@ func doWork(conf config.Config, client *consul.Consul) {
 		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalPQFileName, err)
 	}
 
-	pqchecksum, err := calcMD5(filepath.Join(b.LocalFilePath, b.LocalPQFileName))
+	pqchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalPQFileName))
 	if err != nil {
 		log.Fatalf("Unable to generate checksum for file %s: %v", b.LocalPQFileName, err)
 	}
@@ -149,7 +153,7 @@ func doWork(conf config.Config, client *consul.Consul) {
 		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalACLFileName, err)
 	}
 
-	aclchecksum, err := calcMD5(filepath.Join(b.LocalFilePath, b.LocalACLFileName))
+	aclchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalACLFileName))
 	if err != nil {
 		log.Fatalf("[ERR] Unable to generate checksum for file %s: %v", b.LocalACLFileName, err)
 	}
@@ -157,6 +161,10 @@ func doWork(conf config.Config, client *consul.Consul) {
 
 	b.writeMetaLocal()
 	b.compressStagedBackup()
+
+	if b.Config.Encryption != "" {
+		b.encryptBackup()
+	}
 
 	if conf.Acceptance {
 		log.Print("[INFO] Skipping remote backup during testing")
@@ -202,30 +210,36 @@ func (b *Backup) ACLsToJSON() {
 // preProcess is used to prepare the backup temp location
 func (b *Backup) preProcess() {
 	startString := fmt.Sprintf("%v", b.StartTime)
-	dir := filepath.Join(b.Config.TmpDir, "consul-snapshot", startString)
+	prefix := fmt.Sprintf("consul.snapshot.%s", startString)
+	dir := filepath.Join(b.Config.TmpDir, prefix)
 	err := os.MkdirAll(dir, 0777)
 	if err != nil {
 		log.Fatalf("Unable to create tmpdir %s: %v", b.Config.TmpDir, err)
 	}
 
-	b.LocalKVFileName = fmt.Sprintf("consul.kv.%s.gz", startString)
-	b.LocalPQFileName = fmt.Sprintf("consul.pq.%s.gz", startString)
-	b.LocalACLFileName = fmt.Sprintf("consul.acl.%s.gz", startString)
+	b.LocalKVFileName = fmt.Sprintf("consul.kv.%s.json", startString)
+	b.LocalPQFileName = fmt.Sprintf("consul.pq.%s.json", startString)
+	b.LocalACLFileName = fmt.Sprintf("consul.acl.%s.json", startString)
 
 	b.LocalFilePath = dir
-
 }
 
 // writeMetaLocal is used to write metadata about the backup into the
 // tarball for further inspection later, such as consul-snapshot rev
 func (b *Backup) writeMetaLocal() {
-	meta := &backupMeta{
-		KVChecksum:            b.KVFileChecksum,
-		PQChecksum:            b.PQFileChecksum,
-		ACLChecksum:           b.ACLFileChecksum,
+	endTime := time.Now().Unix()
+	nodename, err := b.Client.Client.Agent().NodeName()
+	if err != nil {
+		nodename = ""
+	}
+	meta := &BackupMeta{
+		KVSha256:              b.KVFileChecksum,
+		PQSha256:              b.PQFileChecksum,
+		ACLSha256:             b.ACLFileChecksum,
 		ConsulSnapshotVersion: b.Config.Version,
 		StartTime:             b.StartTime,
-		EndTime:               b.EndTime,
+		EndTime:               endTime,
+		NodeName:              nodename,
 	}
 
 	metajsonData, err := json.Marshal(meta)
@@ -233,7 +247,7 @@ func (b *Backup) writeMetaLocal() {
 		log.Fatalf("[ERR] Could not encode meta to json!: %v", err)
 	}
 
-	if err := writeFileLocal(b.LocalFilePath, "meta", metajsonData); err != nil {
+	if err := writeFileLocal(b.LocalFilePath, "meta.json", metajsonData); err != nil {
 		log.Fatalf("[ERR] Could not write meta to local dir: %v", err)
 	}
 }
@@ -249,12 +263,8 @@ func writeFileLocal(path string, filename string, contents []byte) error {
 	}
 	defer handle.Close()
 
-	// Create a new gzip writer
-	gz := gzip.NewWriter(handle)
-	defer gz.Close()
-
 	// Actually write the json to the file
-	bytesWritten, err := gz.Write([]byte(contents))
+	bytesWritten, err := handle.Write(contents)
 	if err != nil {
 		return fmt.Errorf("Could not write data to file!: %v", err)
 	}
@@ -265,14 +275,71 @@ func writeFileLocal(path string, filename string, contents []byte) error {
 
 func (b *Backup) compressStagedBackup() {
 	startString := fmt.Sprintf("%v", b.StartTime)
-	finalfile := fmt.Sprintf("consul.snapshot.%s.gz", startString)
+	var finalfile string
+	if b.Config.Acceptance {
+		finalfile = "acceptancetest.gz"
+	} else {
+		finalfile = fmt.Sprintf("consul.snapshot.%s.tar.gz", startString)
+	}
 	finalpath := filepath.Join(b.Config.TmpDir, finalfile)
 	b.FullFilename = finalpath
 	source := []string{b.LocalFilePath}
 	err := archiver.TarGz(finalpath, source)
 	if err != nil {
-		log.Fatalf("[INFO] Unable to write compressed archive to %s: %v", finalpath, err)
+		log.Fatalf("[ERR] Unable to write compressed archive to %s: %v", finalpath, err)
 	}
+}
+
+func (b *Backup) encryptBackup() {
+	source, err := ioutil.ReadFile(b.FullFilename)
+	if err != nil {
+		log.Fatalf("Unable to read backup file at %s to encrypt: %v", b.FullFilename, err)
+	}
+
+	salt := make([]byte, b.Config.EncryptionSaltLen)
+	if _, err := rand.Read(salt); err != nil {
+		log.Fatalf("[ERR] Unable to generate salt for encryption: %v", err)
+	}
+
+	key, err := scrypt.Key([]byte(b.Config.Encryption), salt, 16384, 8, 1, b.Config.EncryptionSaltLen)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to generate scrypt key: %v", err)
+	}
+
+	aesCipher, err := aes.NewCipher(key)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to generate aes cipher: %v", err)
+	}
+
+	gcm, err := cipher.NewGCM(aesCipher)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to create GCM: %v", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(salt); err != nil {
+		log.Fatalf("[ERR] Unable to generate nonce for encryption: %v", err)
+	}
+
+	sealedData := gcm.Seal(nil, nonce, source, nil)
+	var ciphertext bytes.Buffer
+	ciphertext.Write([]byte(b.Config.EncryptionPrefix))
+	ciphertext.Write(salt)
+	ciphertext.Write(nonce)
+	ciphertext.Write(sealedData)
+	sealedData = nil
+
+	encryptedfile, err := os.OpenFile(b.FullFilename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to open file for encrypted write: %v", err)
+	}
+	defer encryptedfile.Close()
+
+	_, err = encryptedfile.Write(ciphertext.Bytes())
+	if err != nil {
+		log.Fatalf("[ERR] Unable to write to encrypted file: %v", err)
+	}
+
 }
 
 // Write the local backup file to S3.
@@ -309,9 +376,6 @@ func (b *Backup) writeBackupRemote() {
 // Run post processing on the backup, acking the key and removing and temp files.
 // There are no tests for the remote operation.
 func (b *Backup) postProcess() {
-	// endtime is used just for meta and if needed to calc how long it actually took
-	b.EndTime = time.Now().Unix()
-
 	// Mark a key in consul for our last backup time.
 	writeOpt := &consulapi.WriteOptions{}
 	startstring := fmt.Sprintf("%v", b.StartTime)
