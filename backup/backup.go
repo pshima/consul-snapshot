@@ -317,7 +317,7 @@ func (b *Backup) encryptBackup() {
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(salt); err != nil {
+	if _, err := rand.Read(nonce); err != nil {
 		log.Fatalf("[ERR] Unable to generate nonce for encryption: %v", err)
 	}
 

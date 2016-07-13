@@ -3,7 +3,7 @@
 * Back up ACLs
 * Back up Prepared Queries
 * Optionally encrypt data with a CRYPTO_PASSWORD environment variable passphrase
-* Add meta on backups
+* Add metadata on backups
 * Refactor backup layout and adjust restores
 
 ## 0.1.5

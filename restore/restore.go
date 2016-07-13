@@ -2,10 +2,12 @@ package restore
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -41,7 +43,7 @@ type Restore struct {
 	Version       string
 }
 
-// Runner runs the restore
+// Runner is the base level to start a restore and is called from command
 func Runner(restorepath string) int {
 	consulClient := &consul.Consul{Client: *consul.Client()}
 
@@ -52,13 +54,14 @@ func Runner(restorepath string) int {
 	return 0
 }
 
-// actually do the work here.
+// doWork this is the main function to start a restore
 func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 	restore := &Restore{}
 	restore.StartTime = time.Now().Unix()
 	restore.RestorePath = restorePath
 	restore.Config = conf
 
+	// if we are running an Acceptance test then we need to restore from local
 	if conf.Acceptance {
 		restore.LocalFilePath = fmt.Sprintf("%v/acceptancetest.gz", conf.TmpDir)
 	} else {
@@ -79,6 +82,8 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 	log.Print("[INFO] Inspecting backup contents")
 	restore.inspectBackup()
 
+	// if during the backup inspection if we found it was v1 we
+	// already have the kv data in the restore struct
 	if restore.Version != "0.0.1" {
 		log.Print("[INFO] Parsing KV Data")
 		restore.loadKVData()
@@ -96,6 +101,9 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 
 }
 
+// checkEncryption peeks into the backup to see if it encrypted
+// if it is, then we need to have the CRYPTO_PASSWORD env var
+// or we cant restore it at all
 func (r *Restore) checkEncryption() {
 	backupData, err := ioutil.ReadFile(r.LocalFilePath)
 	if err != nil {
@@ -110,10 +118,9 @@ func (r *Restore) checkEncryption() {
 	} else {
 		r.Encrypted = false
 	}
-
 }
 
-// Get the backup from S3
+// getRemoteBackup is used to pull backups from S3
 func getRemoteBackup(r *Restore, conf *config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
@@ -137,7 +144,7 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 		Key:    &r.RestorePath,
 	}
 
-	log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.LocalFilePath, string(conf.S3Region))
+	log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.RestorePath, string(conf.S3Region))
 	downloader := s3manager.NewDownloader(s3Conn)
 	_, err = downloader.Download(outFile, params)
 	if err != nil {
@@ -147,6 +154,7 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 	log.Print("[INFO] Download completed")
 }
 
+// decrypt is used to read a file, decrypt it, and write it back to the same path
 func (r *Restore) decrypt() {
 	ciphertext, err := ioutil.ReadFile(r.LocalFilePath)
 	if err != nil {
@@ -176,7 +184,7 @@ func (r *Restore) decrypt() {
 
 	output, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		log.Fatalf("[ERR] Unable to decrypt data: %v", err)
+		log.Fatalf("[ERR] Unable to decrypt data (possible bad CRYPTO_PASSWORD: %v", err)
 	}
 
 	if err := ioutil.WriteFile(r.LocalFilePath, output, os.FileMode(0644)); err != nil {
@@ -184,15 +192,35 @@ func (r *Restore) decrypt() {
 	}
 }
 
-// extract the backup to the Restore struct
+// extractBackup uses archiver to extract the backup locally.
 func (r *Restore) extractBackup() {
 	dest := filepath.Dir(r.LocalFilePath)
 	archiver.UntarGz(r.LocalFilePath, dest)
 }
 
-func parsev1data(b []byte) (consulapi.KVPairs, error) {
+// parsev1data is used if we have detected the backup has no metadata
+// then it is likely a v1 style backup, so open it, gunzip it, and
+// then unmarshall the contents and return them as kvpairs.
+// v1 backups only contained kvpairs.
+func parsev1data(path string) (consulapi.KVPairs, error) {
+	handle, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("[ERR] Could not open local gzipped file: %v", err)
+	}
+
+	// Create a new gzip writer
+	gz, err := gzip.NewReader(handle)
+	if err != nil {
+		log.Fatalf("[ERR] Could not read local gzipped file: %v", err)
+	}
+
+	outData := new(bytes.Buffer)
+	_, err = io.Copy(outData, gz)
+
+	bytestosend := outData.Bytes()
+
 	kvpairs := consulapi.KVPairs{}
-	if err := json.Unmarshal(b, kvpairs); err != nil {
+	if err := json.Unmarshal(bytestosend, &kvpairs); err != nil {
 		return nil, err
 	}
 	totalKeys := len(kvpairs)
@@ -200,6 +228,9 @@ func parsev1data(b []byte) (consulapi.KVPairs, error) {
 	return kvpairs, nil
 }
 
+// inspectBackup takes a look at the metadata of the backup and
+// tries to determine more information about it from the meta.
+// if we find its a v1 backup, just process it and return
 func (r *Restore) inspectBackup() {
 	// first we need to fix the pathing to the extracted location
 	var extractedpath string
@@ -211,7 +242,7 @@ func (r *Restore) inspectBackup() {
 	metaData, err := ioutil.ReadFile(metaPath)
 	if err != nil {
 		log.Print("[INFO] No meta file found, assuming 0.1.x backup")
-		r.JSONData, err = parsev1data(metaData)
+		r.JSONData, err = parsev1data(r.LocalFilePath)
 		r.Version = "0.0.1"
 		if err != nil {
 			log.Fatalf("[ERR] Failed to parse v1 data, possible bad backup file: %v", err)
@@ -232,6 +263,7 @@ func (r *Restore) inspectBackup() {
 	r.Meta = metaExtract
 }
 
+// loadKVData loads data from an uncompressed kv backup file into an object
 func (r *Restore) loadKVData() {
 	startstring := fmt.Sprintf("%v", r.Meta.StartTime)
 	kvFileName := fmt.Sprintf("consul.kv.%s.json", startstring)
@@ -244,10 +276,10 @@ func (r *Restore) loadKVData() {
 	if err := json.Unmarshal(kvData, &r.JSONData); err != nil {
 		log.Fatalf("[ERR] Unable to unmarshal kv data: %v", err)
 	}
-
 	log.Printf("[INFO] Loaded %v keys to restore", len(r.JSONData))
 }
 
+// loadPQData loads data from an uncompressed PQ backup file into an object
 func (r *Restore) loadPQData() {
 	startstring := fmt.Sprintf("%v", r.Meta.StartTime)
 	pqFileName := fmt.Sprintf("consul.pq.%s.json", startstring)
@@ -261,9 +293,9 @@ func (r *Restore) loadPQData() {
 		log.Fatalf("[ERR] Unable to unmarshal pq data: %v", err)
 	}
 	log.Printf("[INFO] Loaded %v Prepared Queries to restore", len(r.PQData))
-
 }
 
+// loadACLData loads data from an uncompressed ACL backup file into an object
 func (r *Restore) loadACLData() {
 	startstring := fmt.Sprintf("%v", r.Meta.StartTime)
 	aclFileName := fmt.Sprintf("consul.acl.%s.json", startstring)
@@ -279,7 +311,7 @@ func (r *Restore) loadACLData() {
 	log.Printf("[INFO] Loaded %v ACLs to restore", len(r.ACLData))
 }
 
-// put the keys back in to consul.
+// restoreKV takes the restored kv data and puts it back in to consul
 func restoreKV(r *Restore, c *consul.Consul) {
 	restoredKeyCount := 0
 	errorCount := 0
@@ -294,11 +326,12 @@ func restoreKV(r *Restore, c *consul.Consul) {
 	log.Printf("[INFO] Restored %v keys with %v errors", restoredKeyCount, errorCount)
 }
 
+// This needs a bit more testing before we can do PQ restores
 func restorePQs(r *Restore, c *consul.Consul) {
 	log.Println("[WARN] PQ restoration currently unsupported")
 }
 
+// This needs a bit more testing before we can do ACL restores
 func restoreACLs(r *Restore, c *consul.Consul) {
 	log.Println("[WARN] ACL restoration currently unsupported")
-
 }
