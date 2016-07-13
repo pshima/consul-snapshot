@@ -72,10 +72,11 @@ func (c *Consul) ListACLs() {
 			c.ACLData = []*consulapi.ACLEntry{}
 			c.ACLDataLen = 0
 		} else {
-			log.Fatalf("[ERR] Unable to list ACLS: %v", err)
+			log.Fatalf("[ERR] Unable to list ACLs: %v", err)
 		}
+	} else {
+		c.ACLData = acls
+		c.ACLDataLen = len(acls)
 	}
 
-	c.ACLData = acls
-	c.ACLDataLen = len(acls)
 }
