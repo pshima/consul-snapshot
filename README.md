@@ -8,6 +8,8 @@ consul-snapshot runs a small http server that can be used for consul health chec
 
 consul-snapshot has been used in production since February 2016.
 
+[CHANGELOG](CHANGELOG.md)
+
 ## Features
 - Back up K/V Store
 - Back up ACLs
@@ -42,6 +44,8 @@ Configuration is done from environment variables.
 - AWS_ACCESS_KEY_ID (the access key id used to access the bucket)
 - AWS_SECRET_ACCESS_KEY (the secret key used to access the bucket)
 - BACKUPINTERVAL (how often you want the backup to run in seconds)
+- CRYPTO_PASSWORD (sets a password for encrypting and decrypting backups)
+- SNAPSHOT_TMP_DIR (sets the directory for temporary files, defaults to "/tmp")
 
 And through the consul api there are several options available (https://github.com/hashicorp/consul/blob/master/api/api.go#L126)
 
@@ -52,7 +56,7 @@ And through the consul api there are several options available (https://github.c
 - CONSUL_HTTP_SSL_VERIFY (default: nil)
 
 ## Authentication
-Authentication is done through the above environment variables.  Credentials can be ommitted in place of an EC2 Instance IAM profile with access to the S3 Bucket.
+Authentication is done through the above environment variables.  Credentials can be ommitted in place of an EC2 Instance IAM profile with write access to the S3 Bucket.
 
 ## Running
 Running a backup:
@@ -107,4 +111,5 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Add metrics
 - Add single key backups
 - Add options to specify paths
+- Use transactions for backups and restores
 

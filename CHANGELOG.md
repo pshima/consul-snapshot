@@ -5,6 +5,8 @@
 * Optionally encrypt data with a CRYPTO_PASSWORD environment variable passphrase
 * Add metadata on backups
 * Refactor backup layout and adjust restores
+* Add additional unit and acceptance tests
+* Add a default backup interval of 60 seconds
 
 ## 0.1.5
 * Fix regression in temp file restore location
