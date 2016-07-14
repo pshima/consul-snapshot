@@ -12,18 +12,16 @@ var hostname string
 
 // Config is a struct to hold the backup configuration
 type Config struct {
-	S3Bucket          string
-	S3Region          string
-	S3AccessKey       string
-	S3SecretKey       string
-	Hostname          string
-	BackupInterval    time.Duration
-	TmpDir            string
-	Acceptance        bool
-	Version           string
-	Encryption        string
-	EncryptionSaltLen int
-	EncryptionPrefix  string
+	S3Bucket       string
+	S3Region       string
+	S3AccessKey    string
+	S3SecretKey    string
+	Hostname       string
+	BackupInterval time.Duration
+	TmpDir         string
+	Acceptance     bool
+	Version        string
+	Encryption     string
 }
 
 // When starting, just set the hostname
@@ -89,7 +87,7 @@ func setEnvVars(conf *Config, tests bool) error {
 // ParseConfig parses the config and returns it
 func ParseConfig(tests bool) *Config {
 	// Set some defaults
-	conf := &Config{EncryptionSaltLen: 32, EncryptionPrefix: "v0:"}
+	conf := &Config{}
 
 	err := setEnvVars(conf, tests)
 	if err != nil {

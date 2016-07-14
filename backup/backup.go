@@ -2,9 +2,6 @@ package backup
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -23,8 +20,8 @@ import (
 	"github.com/mholt/archiver"
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
+	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
-	"golang.org/x/crypto/scrypt"
 )
 
 // Backup is the backup itself including configuration and data
@@ -163,7 +160,7 @@ func doWork(conf *config.Config, client *consul.Consul) {
 	b.compressStagedBackup()
 
 	if b.Config.Encryption != "" {
-		b.encryptBackup()
+		crypt.EncryptFile(b.LocalFilePath, b.Config.Encryption)
 	}
 
 	if conf.Acceptance {
@@ -288,58 +285,6 @@ func (b *Backup) compressStagedBackup() {
 	if err != nil {
 		log.Fatalf("[ERR] Unable to write compressed archive to %s: %v", finalpath, err)
 	}
-}
-
-func (b *Backup) encryptBackup() {
-	source, err := ioutil.ReadFile(b.FullFilename)
-	if err != nil {
-		log.Fatalf("Unable to read backup file at %s to encrypt: %v", b.FullFilename, err)
-	}
-
-	salt := make([]byte, b.Config.EncryptionSaltLen)
-	if _, err := rand.Read(salt); err != nil {
-		log.Fatalf("[ERR] Unable to generate salt for encryption: %v", err)
-	}
-
-	key, err := scrypt.Key([]byte(b.Config.Encryption), salt, 16384, 8, 1, b.Config.EncryptionSaltLen)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to generate scrypt key: %v", err)
-	}
-
-	aesCipher, err := aes.NewCipher(key)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to generate aes cipher: %v", err)
-	}
-
-	gcm, err := cipher.NewGCM(aesCipher)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to create GCM: %v", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		log.Fatalf("[ERR] Unable to generate nonce for encryption: %v", err)
-	}
-
-	sealedData := gcm.Seal(nil, nonce, source, nil)
-	var ciphertext bytes.Buffer
-	ciphertext.Write([]byte(b.Config.EncryptionPrefix))
-	ciphertext.Write(salt)
-	ciphertext.Write(nonce)
-	ciphertext.Write(sealedData)
-	sealedData = nil
-
-	encryptedfile, err := os.OpenFile(b.FullFilename, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to open file for encrypted write: %v", err)
-	}
-	defer encryptedfile.Close()
-
-	_, err = encryptedfile.Write(ciphertext.Bytes())
-	if err != nil {
-		log.Fatalf("[ERR] Unable to write to encrypted file: %v", err)
-	}
-
 }
 
 // Write the local backup file to S3.

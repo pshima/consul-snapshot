@@ -104,12 +104,6 @@ func TestParseConfig(t *testing.T) {
 	os.Clearenv()
 	os.Setenv("BACKUPINTERVAL", "60")
 	conf := ParseConfig(true)
-	if conf.EncryptionSaltLen != 32 {
-		t.Error("Default encryption salt length not 32!")
-	}
-	if conf.EncryptionPrefix != "v0:" {
-		t.Error("Encryption prefix not set correctly!")
-	}
 	hostname, _ = os.Hostname()
 	if conf.Hostname != hostname {
 		t.Error("Hostname not being set correctly!")

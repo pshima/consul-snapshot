@@ -3,8 +3,6 @@ package restore
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,7 +22,7 @@ import (
 	"github.com/pshima/consul-snapshot/backup"
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
-	"golang.org/x/crypto/scrypt"
+	"github.com/pshima/consul-snapshot/crypt"
 )
 
 // Restore is a struct to hold data about a single restore
@@ -61,6 +59,8 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 	restore.RestorePath = restorePath
 	restore.Config = conf
 
+	var err error
+
 	// if we are running an Acceptance test then we need to restore from local
 	if conf.Acceptance {
 		restore.LocalFilePath = fmt.Sprintf("%v/acceptancetest.gz", conf.TmpDir)
@@ -69,11 +69,17 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 	}
 
 	log.Print("[INFO] Checking encryption status of backup")
-	restore.checkEncryption()
+	restore.Encrypted, err = crypt.CheckEncryption(restore.RestorePath)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to check file for encrpytion status: %v", err)
+	}
 
 	log.Print("[INFO] Encrypted backup detected, decrypting")
 	if restore.Encrypted {
-		restore.decrypt()
+		if restore.Config.Encryption == "" {
+			log.Fatal("[ERR] Encrypted backup detected but CRYPTO_PASSWORD is empty, exiting")
+		}
+		crypt.DecryptFile(restore.LocalFilePath, restore.Config.Encryption)
 	}
 
 	log.Print("[INFO] Extracting backup")
@@ -99,25 +105,6 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 
 	log.Print("[INFO] Restore completed.")
 
-}
-
-// checkEncryption peeks into the backup to see if it encrypted
-// if it is, then we need to have the CRYPTO_PASSWORD env var
-// or we cant restore it at all
-func (r *Restore) checkEncryption() {
-	backupData, err := ioutil.ReadFile(r.LocalFilePath)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to read backupfile: %v", err)
-	}
-	// try and peek in to see if we have an encrypted backup
-	if bytes.HasPrefix(backupData, []byte(r.Config.EncryptionPrefix)) {
-		r.Encrypted = true
-		if r.Config.Encryption == "" {
-			log.Fatal("[ERR] No passphrase set and backup is encrypted, exiting")
-		}
-	} else {
-		r.Encrypted = false
-	}
 }
 
 // getRemoteBackup is used to pull backups from S3
@@ -152,44 +139,6 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 	}
 	outFile.Close()
 	log.Print("[INFO] Download completed")
-}
-
-// decrypt is used to read a file, decrypt it, and write it back to the same path
-func (r *Restore) decrypt() {
-	ciphertext, err := ioutil.ReadFile(r.LocalFilePath)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to read backupfile: %v", err)
-	}
-	ciphertext = ciphertext[len(r.Config.EncryptionPrefix):]
-	salt := ciphertext[:r.Config.EncryptionSaltLen]
-	ciphertext = ciphertext[r.Config.EncryptionSaltLen:]
-
-	key, err := scrypt.Key([]byte(r.Config.Encryption), salt, 16384, 8, 1, r.Config.EncryptionSaltLen)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to generate scrypt key: %v", err)
-	}
-
-	aesCipher, err := aes.NewCipher(key)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to generate aes cipher: %v", err)
-	}
-
-	gcm, err := cipher.NewGCM(aesCipher)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to create GCM: %v", err)
-	}
-
-	nonce := ciphertext[:gcm.NonceSize()]
-	ciphertext = ciphertext[gcm.NonceSize():]
-
-	output, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		log.Fatalf("[ERR] Unable to decrypt data (possible bad CRYPTO_PASSWORD: %v", err)
-	}
-
-	if err := ioutil.WriteFile(r.LocalFilePath, output, os.FileMode(0644)); err != nil {
-		log.Fatalf("Error decrypting file to %s: %v", r.LocalFilePath, err)
-	}
 }
 
 // extractBackup uses archiver to extract the backup locally.
