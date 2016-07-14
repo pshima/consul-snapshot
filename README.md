@@ -99,8 +99,6 @@ There is an acceptance test that:
 To run the acceptance test set ACCEPTANCE_TEST=1
 
 ## Todos
-- Add more unit tests
-- Add more configurable options
 - Add safety checks or confirm dialog for restore
 - Add restore dry run
 - Inspect app performance on larger data structures
@@ -109,5 +107,4 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Add metrics
 - Add single key backups
 - Add options to specify paths
-- Add ability to encrypt backups before uploading
 
