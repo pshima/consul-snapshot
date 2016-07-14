@@ -70,6 +70,9 @@ func setEnvVars(conf *Config, tests bool) error {
 				log.Fatal("[ERR] Required env var missing, exiting")
 			}
 		}
+		if backupInterval == "" {
+			backupInterval = "60"
+		}
 		backupStrToInt, err := strconv.Atoi(backupInterval)
 		if err != nil {
 			return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
