@@ -205,15 +205,15 @@ func TestWriteMetaLocal(t *testing.T) {
 		t.Errorf("Unable to marshall source testing data: %v", err)
 	}
 
-	reflecttest := reflect.DeepEqual(metaTest, meta)
-
 	// since the timestamp is created inside writeMetaLocal, overwrite it here to be the
 	// same as our test struct
 	meta.EndTime = testint64
 	meta.NodeName = hostname
 
+	reflecttest := reflect.DeepEqual(metaTest, meta)
+
 	if reflecttest != true {
-		t.Errorf("JSON marshall did not equal. Got %v, expected %v", metaTest, meta)
+		t.Errorf("JSON marshall did not equal.\nsource: %v\n expect: %v\n", metaTest, meta)
 	}
 
 }
