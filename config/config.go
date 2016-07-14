@@ -59,26 +59,29 @@ func setEnvVars(conf *Config, tests bool) error {
 		conf.TmpDir = "/tmp"
 	}
 
+	if backupInterval == "" {
+		backupInterval = "60"
+	}
+
+	backupStrToInt, err := strconv.Atoi(backupInterval)
+	if err != nil {
+		return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
+	}
+	backupTimeDuration := time.Duration(backupStrToInt) * time.Second
+	conf.BackupInterval = backupTimeDuration
+
 	// if the environment variable isn't set, require specific env vars
 	if acceptanceTest == "" {
 		conf.Acceptance = false
 		if tests {
 			log.Println("Running tests, skipping ENV var requirements")
 		} else {
-			envChecks := []string{conf.S3Bucket, conf.S3Region, backupInterval}
+			envChecks := []string{conf.S3Bucket, conf.S3Region}
 			if checkEmpty(envChecks) == false {
 				log.Fatal("[ERR] Required env var missing, exiting")
 			}
 		}
-		if backupInterval == "" {
-			backupInterval = "60"
-		}
-		backupStrToInt, err := strconv.Atoi(backupInterval)
-		if err != nil {
-			return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
-		}
-		backupTimeDuration := time.Duration(backupStrToInt) * time.Second
-		conf.BackupInterval = backupTimeDuration
+
 	} else {
 		conf.Acceptance = true
 		conf.BackupInterval = 60 * time.Second
