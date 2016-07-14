@@ -1,3 +1,6 @@
+## 0.2.1
+* Bug fix for restore path
+
 ## 0.2.0
 * Clean up acceptance test logics by moving to config struct
 * Back up ACLs

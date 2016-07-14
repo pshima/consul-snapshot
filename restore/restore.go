@@ -69,9 +69,9 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 	}
 
 	log.Print("[INFO] Checking encryption status of backup")
-	restore.Encrypted, err = crypt.CheckEncryption(restore.RestorePath)
+	restore.Encrypted, err = crypt.CheckEncryption(restore.LocalFilePath)
 	if err != nil {
-		log.Fatalf("[ERR] Unable to check file for encrpytion status: %v", err)
+		log.Fatalf("[ERR] Unable to check file for encryption status: %v", err)
 	}
 
 	if restore.Encrypted {
