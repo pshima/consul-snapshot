@@ -71,15 +71,16 @@ func setEnvVars(conf *Config, tests bool) error {
 			if checkEmpty(envChecks) == false {
 				log.Fatal("[ERR] Required env var missing, exiting")
 			}
-			backupStrToInt, err := strconv.Atoi(backupInterval)
-			if err != nil {
-				return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
-			}
-			backupTimeDuration := time.Duration(backupStrToInt) * time.Second
-			conf.BackupInterval = backupTimeDuration
 		}
+		backupStrToInt, err := strconv.Atoi(backupInterval)
+		if err != nil {
+			return fmt.Errorf("Unable to convert BACKUPINTERVAL environment var to integer: %v", err)
+		}
+		backupTimeDuration := time.Duration(backupStrToInt) * time.Second
+		conf.BackupInterval = backupTimeDuration
 	} else {
 		conf.Acceptance = true
+		conf.BackupInterval = 60 * time.Second
 	}
 
 	return nil
@@ -87,6 +88,7 @@ func setEnvVars(conf *Config, tests bool) error {
 
 // ParseConfig parses the config and returns it
 func ParseConfig(tests bool) *Config {
+	// Set some defaults
 	conf := &Config{EncryptionSaltLen: 32, EncryptionPrefix: "v0:"}
 
 	err := setEnvVars(conf, tests)

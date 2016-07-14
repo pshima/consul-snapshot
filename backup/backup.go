@@ -46,8 +46,8 @@ type Backup struct {
 	FullFilename     string
 }
 
-// BackupMeta holds the meta struct to write inside the compressed data
-type BackupMeta struct {
+// Meta holds the meta struct to write inside the compressed data
+type Meta struct {
 	ConsulSnapshotVersion string
 	KVSha256              string
 	PQSha256              string
@@ -232,7 +232,7 @@ func (b *Backup) writeMetaLocal() {
 	if err != nil {
 		nodename = ""
 	}
-	meta := &BackupMeta{
+	meta := &Meta{
 		KVSha256:              b.KVFileChecksum,
 		PQSha256:              b.PQFileChecksum,
 		ACLSha256:             b.ACLFileChecksum,

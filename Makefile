@@ -18,8 +18,11 @@ updatedeps:
 build: deps
 	go build
 
+fmt:
+	go fmt `go list ./... | grep -v vendor`
+
 test:
-	go test -coverprofile=coverage.out; go tool cover -html=coverage.out -o coverage.html
+	go test ./...
 	go vet ./...
 	golint ./...
 
@@ -33,3 +36,7 @@ build-all: test
 
 install: consul-snapshot
 	cp consul-snapshot /usr/local/bin/consul-snapshot
+
+cov:
+	gocov test ./... | gocov-html > /tmp/coverage.html
+	open /tmp/coverage.html

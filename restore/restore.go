@@ -38,7 +38,7 @@ type Restore struct {
 	RestorePath   string
 	RawData       []byte
 	Encrypted     bool
-	Meta          *backup.BackupMeta
+	Meta          *backup.Meta
 	ExtractedPath string
 	Version       string
 }
@@ -250,7 +250,7 @@ func (r *Restore) inspectBackup() {
 		return
 	}
 
-	metaExtract := &backup.BackupMeta{}
+	metaExtract := &backup.Meta{}
 
 	if err := json.Unmarshal(metaData, metaExtract); err != nil {
 		log.Fatalf("[ERR] Unable to unmarshal metadata: %v", err)

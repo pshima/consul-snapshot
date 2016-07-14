@@ -2,11 +2,22 @@
 
 consul-snapshot is a backup and restore utility for Consul (https://www.consul.io).  This is slightly different than some other utilities out there as this runs as a daemon for backups and ships them to S3.  consul snapshot in its current state is designed only for disaster recovery scenarios and full restore.  There is no support for single key or path based backups at the moment.
 
-This is intended to run under Nomad (https://www.nomadproject.io) and connected to Consul (https://www.consul.io) and registered as a service with health checks.
+This is intended to run under Nomad (https://www.nomadproject.io) and connected to Consul (https://www.consul.io) and registered as a service with health checks.  It also runs fine outside of Nomad standalone and can even be used for single backups, however it is designed to run as a daemon.
 
-consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no consul service registration as that is expected to be done in the nomad job spec.
+consul-snapshot runs a small http server that can be used for consul health checks on backup state.  Right now if the backup is older than 1 hour it will return 500s to health check requests at /health making it easy for consul health checking.  There is no consul service registration as that is expected to be done in the nomad job spec or manually.
 
-WARNING: consul-snapshot is still in early development but it is production ready with several months of production use.
+consul-snapshot has been used in production since February 2016.
+
+## Features
+- Back up K/V Store
+- Back up ACLs
+- Back up Prepared Queries (Consul 0.6.x)
+- Store backups in Amazon S3
+- Restore backups directly from S3
+- AWS encrypted backups and restores with configurable passphrase
+- Consul compatible health checks for age of last backup
+- Configurable consul settings and backup interval
+- EC2 IAM instance profile support(no credentials needed)
 
 ## Installation
 Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
@@ -41,7 +52,7 @@ And through the consul api there are several options available (https://github.c
 - CONSUL_HTTP_SSL_VERIFY (default: nil)
 
 ## Authentication
-Authentication is done through the above environment variables.
+Authentication is done through the above environment variables.  Credentials can be ommitted in place of an EC2 Instance IAM profile with access to the S3 Bucket.
 
 ## Running
 Running a backup:
@@ -92,7 +103,6 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Add more configurable options
 - Add safety checks or confirm dialog for restore
 - Add restore dry run
-- Add checksumming/metadata on local file and upload meta first
 - Inspect app performance on larger data structures
 - Backup in chunks instead of all at once
 - Add a web interface to view backups
