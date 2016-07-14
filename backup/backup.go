@@ -26,32 +26,32 @@ import (
 
 // Backup is the backup itself including configuration and data
 type Backup struct {
-	StartTime        int64
-	KVJSONData       []byte
-	LocalKVFileName  string
+	ACLFileChecksum  string
+	ACLJSONData      []byte
+	Client           *consul.Consul
+	Config           *config.Config
+	FullFilename     string
 	KVFileChecksum   string
-	PQJSONData       []byte
+	KVJSONData       []byte
+	LocalACLFileName string
+	LocalFilePath    string
+	LocalKVFileName  string
 	LocalPQFileName  string
 	PQFileChecksum   string
-	ACLJSONData      []byte
-	LocalACLFileName string
-	ACLFileChecksum  string
-	LocalFilePath    string
+	PQJSONData       []byte
 	RemoteFilePath   string
-	Config           *config.Config
-	Client           *consul.Consul
-	FullFilename     string
+	StartTime        int64
 }
 
 // Meta holds the meta struct to write inside the compressed data
 type Meta struct {
-	ConsulSnapshotVersion string
-	KVSha256              string
-	PQSha256              string
 	ACLSha256             string
-	NodeName              string
-	StartTime             int64
+	ConsulSnapshotVersion string
 	EndTime               int64
+	KVSha256              string
+	NodeName              string
+	PQSha256              string
+	StartTime             int64
 }
 
 func calcSha256(path string) (string, error) {
@@ -225,10 +225,12 @@ func (b *Backup) preProcess() {
 // tarball for further inspection later, such as consul-snapshot rev
 func (b *Backup) writeMetaLocal() {
 	endTime := time.Now().Unix()
+
 	nodename, err := b.Client.Client.Agent().NodeName()
 	if err != nil {
 		nodename = ""
 	}
+
 	meta := &Meta{
 		KVSha256:              b.KVFileChecksum,
 		PQSha256:              b.PQFileChecksum,

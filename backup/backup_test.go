@@ -1,11 +1,9 @@
 package backup
 
 import (
-	//"crypto/sha256"
-	//"encoding/hex"
 	"encoding/json"
 	"fmt"
-	//"io/ioutil"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,6 +11,7 @@ import (
 	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
+	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 )
 
@@ -37,16 +36,26 @@ var (
 	acltestlist  = []*consulapi.ACLEntry{acltestdata1}
 )
 
+func testingConfig() *config.Config {
+	config := &config.Config{
+		TmpDir: "/tmp",
+	}
+	return config
+}
+
 // Setup some basic structs we can use across tests
 func testingStructs() *Backup {
 	consulClient := &consul.Consul{}
+	consulClient.Client = *consul.Client()
 	consulClient.KeyData = kvpairlist
 	consulClient.PQData = pqtestlist
 	consulClient.ACLData = acltestlist
 	backup := &Backup{
-		Client: consulClient,
+		Client:        consulClient,
+		StartTime:     time.Now().Unix(),
+		Config:        testingConfig(),
+		LocalFilePath: "/tmp",
 	}
-	backup.StartTime = time.Now().Unix()
 
 	return backup
 }
@@ -129,6 +138,84 @@ func TestACLsToJSON(t *testing.T) {
 	if reflecttest != true {
 		t.Errorf("JSON marshall did not equal. Got %v, expected %v", marshallSouce, backup.ACLJSONData)
 	}
+}
+
+func TestPreProcess(t *testing.T) {
+	backup := testingStructs()
+	backup.KeysToJSON()
+	backup.PQsToJSON()
+	backup.ACLsToJSON()
+	backup.preProcess()
+	startString := fmt.Sprintf("%v", backup.StartTime)
+
+	if backup.LocalKVFileName != fmt.Sprintf("consul.kv.%s.json", startString) {
+		t.Error("Generated kv file name is invalid!")
+	}
+
+	if backup.LocalPQFileName != fmt.Sprintf("consul.pq.%s.json", startString) {
+		t.Error("Generated pq file name is invalid!")
+	}
+
+	if backup.LocalACLFileName != fmt.Sprintf("consul.acl.%s.json", startString) {
+		t.Error("Generated acl file name is invalid!")
+	}
+
+	prefix := fmt.Sprintf("consul.snapshot.%s", startString)
+	dir := filepath.Join(backup.Config.TmpDir, prefix)
+
+	if backup.LocalFilePath != dir {
+		t.Error("Local file path for backups is invalid!")
+	}
+}
+
+func TestWriteMetaLocal(t *testing.T) {
+	backup := testingStructs()
+	backup.KeysToJSON()
+	backup.PQsToJSON()
+	backup.ACLsToJSON()
+	backup.preProcess()
+
+	// set some values in our test structs
+	backup.KVFileChecksum = "1234"
+	backup.PQFileChecksum = "ghij"
+	backup.ACLFileChecksum = "asdf"
+	testint64 := time.Now().Unix()
+	hostname, err := os.Hostname()
+
+	metaTest := &Meta{
+		KVSha256:              backup.KVFileChecksum,
+		PQSha256:              backup.PQFileChecksum,
+		ACLSha256:             backup.ACLFileChecksum,
+		ConsulSnapshotVersion: backup.Config.Version,
+		StartTime:             backup.StartTime,
+		EndTime:               testint64,
+		NodeName:              hostname,
+	}
+
+	backup.writeMetaLocal()
+
+	data, err := ioutil.ReadFile(filepath.Join(backup.LocalFilePath, "meta.json"))
+	if err != nil {
+		t.Errorf("[ERR] Unable to read testfile: %v", err)
+	}
+
+	meta := &Meta{}
+	err = json.Unmarshal(data, meta)
+	if err != nil {
+		t.Errorf("Unable to marshall source testing data: %v", err)
+	}
+
+	reflecttest := reflect.DeepEqual(metaTest, meta)
+
+	// since the timestamp is created inside writeMetaLocal, overwrite it here to be the
+	// same as our test struct
+	meta.EndTime = testint64
+	meta.NodeName = hostname
+
+	if reflecttest != true {
+		t.Errorf("JSON marshall did not equal. Got %v, expected %v", metaTest, meta)
+	}
+
 }
 
 /*
