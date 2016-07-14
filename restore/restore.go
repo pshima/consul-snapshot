@@ -74,8 +74,8 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 		log.Fatalf("[ERR] Unable to check file for encrpytion status: %v", err)
 	}
 
-	log.Print("[INFO] Encrypted backup detected, decrypting")
 	if restore.Encrypted {
+		log.Print("[INFO] Encrypted backup detected, decrypting")
 		if restore.Config.Encryption == "" {
 			log.Fatal("[ERR] Encrypted backup detected but CRYPTO_PASSWORD is empty, exiting")
 		}

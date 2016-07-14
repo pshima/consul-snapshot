@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"reflect"
 	"testing"
@@ -123,7 +124,7 @@ func TestAcceptance(t *testing.T) {
 
 	t.Log("Starting Backup")
 
-	backup.Runner("acc")
+	backup.Runner("test")
 
 	_, err = c.KV().DeleteTree("", nil)
 	if err != nil {
@@ -133,7 +134,7 @@ func TestAcceptance(t *testing.T) {
 		t.Errorf("Unable to clear consul kv store after backup; %v", err)
 	}
 
-	restore.Runner("test")
+	restore.Runner("/tmp/acceptancetest.tar.gz")
 
 	for _, kv := range seedData.Data {
 		//log.Printf("SEED: %v | %v", kv.Key, string(kv.Value))
@@ -144,6 +145,17 @@ func TestAcceptance(t *testing.T) {
 			}
 			t.Errorf("Key Failure: %v", err)
 		}
+	}
+
+	// Remove the staging path
+	err = os.RemoveAll("/tmp/acceptancetest")
+	if err != nil {
+		log.Printf("Unable to remove temporary backup file: %v", err)
+	}
+
+	err = os.RemoveAll("/tmp/acceptancetest.tar.gz")
+	if err != nil {
+		log.Printf("Unable to remove temporary backup file: %v", err)
 	}
 
 }

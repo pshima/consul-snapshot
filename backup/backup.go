@@ -207,7 +207,13 @@ func (b *Backup) ACLsToJSON() {
 // preProcess is used to prepare the backup temp location
 func (b *Backup) preProcess() {
 	startString := fmt.Sprintf("%v", b.StartTime)
-	prefix := fmt.Sprintf("consul.snapshot.%s", startString)
+	var prefix string
+	if b.Config.Acceptance {
+		prefix = "acceptancetest"
+	} else {
+		prefix = fmt.Sprintf("consul.snapshot.%s", startString)
+	}
+
 	dir := filepath.Join(b.Config.TmpDir, prefix)
 	err := os.MkdirAll(dir, 0777)
 	if err != nil {
@@ -276,7 +282,7 @@ func (b *Backup) compressStagedBackup() {
 	startString := fmt.Sprintf("%v", b.StartTime)
 	var finalfile string
 	if b.Config.Acceptance {
-		finalfile = "acceptancetest.gz"
+		finalfile = "acceptancetest.tar.gz"
 	} else {
 		finalfile = fmt.Sprintf("consul.snapshot.%s.tar.gz", startString)
 	}
