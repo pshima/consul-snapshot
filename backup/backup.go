@@ -22,6 +22,8 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
+	"golang.org/x/net/context"
+	"google.golang.org/cloud/storage"
 )
 
 // Backup is the backup itself including configuration and data
@@ -298,8 +300,6 @@ func (b *Backup) compressStagedBackup() {
 // Write the local backup file to S3.
 // There are no tests for this remote operation
 func (b *Backup) writeBackupRemote() {
-	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
-
 	t := time.Unix(b.StartTime, 0)
 	remotePath := fmt.Sprintf("backups/%v/%d/%v/%v", t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
@@ -311,18 +311,37 @@ func (b *Backup) writeBackupRemote() {
 		log.Fatalf("[ERR] Could not read compressed file!: %v", err)
 	}
 
-	// Create the params to pass into the actual uploader
-	params := &s3manager.UploadInput{
-		Bucket: &b.Config.S3Bucket,
-		Key:    &b.RemoteFilePath,
-		Body:   bytes.NewReader(localFileContents),
-	}
+	if len(b.Config.S3Bucket) > 1 {
+		s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
+		// Create the params to pass into the actual uploader
+		params := &s3manager.UploadInput{
+			Bucket: &b.Config.S3Bucket,
+			Key:    &b.RemoteFilePath,
+			Body:   bytes.NewReader(localFileContents),
+		}
 
-	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
-	uploader := s3manager.NewUploader(s3Conn)
-	_, err = uploader.Upload(params)
-	if err != nil {
-		log.Fatalf("[ERR] Could not upload to S3!: %v", err)
+		log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
+		uploader := s3manager.NewUploader(s3Conn)
+		_, err = uploader.Upload(params)
+		if err != nil {
+			log.Fatalf("[ERR] Could not upload to S3!: %v", err)
+		}
+	} else if len(b.Config.GCSBucket) > 1 {
+		ctx := context.Background()
+		client, err := storage.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("[ERR] Could not initialize connection with Google Cloud Storage!: %v", err)
+		}
+		wc := client.Bucket(b.Config.GCSBucket).Object(b.RemoteFilePath).NewWriter(ctx)
+		log.Printf("[INFO] Uploading %v/%v to GCS", string(b.Config.GCSBucket), b.RemoteFilePath)
+		wc.ContentType = "text/plain"
+		// wc.ACL = []storage.ACLRule{{AllUsers: storage.AllUsers, RoleReader: storage.RoleReader}}
+		if _, err := wc.Write(localFileContents); err != nil {
+			log.Fatalf("[ERR] Could not upload to GCS!: %v", err)
+		}
+		if err := wc.Close(); err != nil {
+			log.Fatalf("[ERR] Could not upload to GCS!: %v", err)
+		}
 	}
 }
 

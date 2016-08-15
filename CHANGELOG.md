@@ -1,3 +1,6 @@
+## 0.2.2
+* Add support for Google Cloud Storage
+
 ## 0.2.1
 * Bug fix for restore path
 

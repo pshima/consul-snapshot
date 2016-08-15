@@ -23,6 +23,8 @@ import (
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
+	"golang.org/x/net/context"
+	"google.golang.org/cloud/storage"
 )
 
 // Restore is a struct to hold data about a single restore
@@ -109,8 +111,6 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 
 // getRemoteBackup is used to pull backups from S3
 func getRemoteBackup(r *Restore, conf *config.Config) {
-	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
-
 	r.LocalFilePath = fmt.Sprintf("%v/%v", conf.TmpDir, r.RestorePath)
 
 	localFileDir := filepath.Dir(r.LocalFilePath)
@@ -125,17 +125,38 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 		log.Fatalf("[ERR] Unable to create local restore temp file!: %v", err)
 	}
 
-	// Create the params to pass into the actual downloader
-	params := &s3.GetObjectInput{
-		Bucket: &conf.S3Bucket,
-		Key:    &r.RestorePath,
-	}
+	if len(string(conf.GCSBucket)) < 1 {
+		s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
-	log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.RestorePath, string(conf.S3Region))
-	downloader := s3manager.NewDownloader(s3Conn)
-	_, err = downloader.Download(outFile, params)
-	if err != nil {
-		log.Fatalf("[ERR] Could not download file from S3!: %v", err)
+		// Create the params to pass into the actual downloader
+		params := &s3.GetObjectInput{
+			Bucket: &conf.S3Bucket,
+			Key:    &r.RestorePath,
+		}
+
+		log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.RestorePath, string(conf.S3Region))
+		downloader := s3manager.NewDownloader(s3Conn)
+		_, err = downloader.Download(outFile, params)
+		if err != nil {
+			log.Fatalf("[ERR] Could not download file from S3!: %v", err)
+		}
+	} else {
+		ctx := context.Background()
+		client, err := storage.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("[ERR] Could not initialize connection with Google Cloud Storage!: %v", err)
+		}
+		rc, err := client.Bucket(conf.GCSBucket).Object(r.RestorePath).NewReader(ctx)
+		log.Printf("[INFO] Downloading %v%v from GCS", string(conf.GCSBucket), r.RestorePath)
+		if err != nil {
+			log.Fatalf("[ERR] Could not download file from GCS!: %v", err)
+		}
+		content, _ := ioutil.ReadAll(rc)
+		_, err = outFile.Write(content)
+		if err != nil {
+			log.Fatalf("[ERR] Could not save file: %v", err)
+		}
+		rc.Close()
 	}
 	outFile.Close()
 	log.Print("[INFO] Download completed")

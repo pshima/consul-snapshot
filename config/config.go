@@ -12,6 +12,7 @@ var hostname string
 
 // Config is a struct to hold the backup configuration
 type Config struct {
+	GCSBucket      string
 	S3Bucket       string
 	S3Region       string
 	S3AccessKey    string
@@ -45,6 +46,7 @@ func checkEmpty(s []string) bool {
 
 // Set the environment variables that are required
 func setEnvVars(conf *Config, tests bool) error {
+	conf.GCSBucket = os.Getenv("GCSBUCKET")
 	conf.S3Bucket = os.Getenv("S3BUCKET")
 	conf.S3Region = os.Getenv("S3REGION")
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
@@ -76,8 +78,9 @@ func setEnvVars(conf *Config, tests bool) error {
 		if tests {
 			log.Println("Running tests, skipping ENV var requirements")
 		} else {
-			envChecks := []string{conf.S3Bucket, conf.S3Region}
-			if checkEmpty(envChecks) == false {
+			envS3Checks := []string{conf.S3Bucket, conf.S3Region}
+			envGCSChecks := []string{conf.GCSBucket}
+			if checkEmpty(envS3Checks) == false && checkEmpty(envGCSChecks) == false {
 				log.Fatal("[ERR] Required env var missing, exiting")
 			}
 		}
