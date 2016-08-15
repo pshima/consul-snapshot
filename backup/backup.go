@@ -2,6 +2,7 @@ package backup
 
 import (
 	"bytes"
+  "context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -22,7 +23,6 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
-	"golang.org/x/net/context"
 	"google.golang.org/cloud/storage"
 )
 

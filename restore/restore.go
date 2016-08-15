@@ -3,6 +3,7 @@ package restore
 import (
 	"bytes"
 	"compress/gzip"
+  "context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,6 @@ import (
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
-	"golang.org/x/net/context"
 	"google.golang.org/cloud/storage"
 )
 
