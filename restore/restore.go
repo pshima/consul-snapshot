@@ -3,7 +3,7 @@ package restore
 import (
 	"bytes"
 	"compress/gzip"
-  "context"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
