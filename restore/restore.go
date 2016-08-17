@@ -110,6 +110,44 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 }
 
 // getRemoteBackup is used to pull backups from S3
+func getRemoteBackupS3(r *Restore, conf *config.Config, outFile *os.File) {
+	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
+
+	// Create the params to pass into the actual downloader
+	params := &s3.GetObjectInput{
+		Bucket: &conf.S3Bucket,
+		Key:    &r.RestorePath,
+	}
+
+	log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.RestorePath, string(conf.S3Region))
+	downloader := s3manager.NewDownloader(s3Conn)
+	_, err := downloader.Download(outFile, params)
+	if err != nil {
+		log.Fatalf("[ERR] Could not download file from S3!: %v", err)
+	}
+}
+
+// getRemoteBackup is used to pull backups from Google Cloud Storage
+func getRemoteBackupGoogleStorage(r *Restore, conf *config.Config, outFile *os.File) {
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("[ERR] Could not initialize connection with Google Cloud Storage!: %v", err)
+	}
+	rc, err := client.Bucket(conf.GCSBucket).Object(r.RestorePath).NewReader(ctx)
+	log.Printf("[INFO] Downloading %v%v from GCS", string(conf.GCSBucket), r.RestorePath)
+	if err != nil {
+		log.Fatalf("[ERR] Could not download file from GCS!: %v", err)
+	}
+	content, _ := ioutil.ReadAll(rc)
+	_, err = outFile.Write(content)
+	if err != nil {
+		log.Fatalf("[ERR] Could not save file: %v", err)
+	}
+	rc.Close()
+}
+
+// getRemoteBackup is used to pull backups from S3/GoogleStorage
 func getRemoteBackup(r *Restore, conf *config.Config) {
 	r.LocalFilePath = fmt.Sprintf("%v/%v", conf.TmpDir, r.RestorePath)
 
@@ -126,37 +164,9 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 	}
 
 	if len(string(conf.GCSBucket)) < 1 {
-		s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
-
-		// Create the params to pass into the actual downloader
-		params := &s3.GetObjectInput{
-			Bucket: &conf.S3Bucket,
-			Key:    &r.RestorePath,
-		}
-
-		log.Printf("[INFO] Downloading %v%v from S3 in %v", string(conf.S3Bucket), r.RestorePath, string(conf.S3Region))
-		downloader := s3manager.NewDownloader(s3Conn)
-		_, err = downloader.Download(outFile, params)
-		if err != nil {
-			log.Fatalf("[ERR] Could not download file from S3!: %v", err)
-		}
+		getRemoteBackupS3(r, conf, outFile)
 	} else {
-		ctx := context.Background()
-		client, err := storage.NewClient(ctx)
-		if err != nil {
-			log.Fatalf("[ERR] Could not initialize connection with Google Cloud Storage!: %v", err)
-		}
-		rc, err := client.Bucket(conf.GCSBucket).Object(r.RestorePath).NewReader(ctx)
-		log.Printf("[INFO] Downloading %v%v from GCS", string(conf.GCSBucket), r.RestorePath)
-		if err != nil {
-			log.Fatalf("[ERR] Could not download file from GCS!: %v", err)
-		}
-		content, _ := ioutil.ReadAll(rc)
-		_, err = outFile.Write(content)
-		if err != nil {
-			log.Fatalf("[ERR] Could not save file: %v", err)
-		}
-		rc.Close()
+		getRemoteBackupGoogleStorage(r, conf, outFile)
 	}
 	outFile.Close()
 	log.Print("[INFO] Download completed")
