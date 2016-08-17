@@ -211,7 +211,7 @@ func (b *Backup) preProcess() {
 	if b.Config.Acceptance {
 		prefix = "acceptancetest"
 	} else {
-		prefix = fmt.Sprintf("consul.snapshot.%s", startString)
+		prefix = fmt.Sprintf("%s.consul.snapshot.%s", b.Config.Hostname, startString)
 	}
 
 	dir := filepath.Join(b.Config.TmpDir, prefix)
@@ -284,7 +284,7 @@ func (b *Backup) compressStagedBackup() {
 	if b.Config.Acceptance {
 		finalfile = "acceptancetest.tar.gz"
 	} else {
-		finalfile = fmt.Sprintf("consul.snapshot.%s.tar.gz", startString)
+		finalfile = fmt.Sprintf("%s.consul.snapshot.%s.tar.gz", b.Config.Hostname, startString)
 	}
 	finalpath := filepath.Join(b.Config.TmpDir, finalfile)
 	b.FullFilename = finalpath

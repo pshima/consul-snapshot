@@ -160,7 +160,7 @@ func TestPreProcess(t *testing.T) {
 		t.Error("Generated acl file name is invalid!")
 	}
 
-	prefix := fmt.Sprintf("consul.snapshot.%s", startString)
+	prefix := fmt.Sprintf("%s.consul.snapshot.%s", backup.Config.Hostname, startString)
 	dir := filepath.Join(backup.Config.TmpDir, prefix)
 
 	if backup.LocalFilePath != dir {
