@@ -22,6 +22,8 @@ type Config struct {
 	Acceptance     bool
 	Version        string
 	Encryption     string
+	S3ServerSideEncryption string
+	S3KmsKeyID	string
 }
 
 // When starting, just set the hostname
@@ -53,6 +55,8 @@ func setEnvVars(conf *Config, tests bool) error {
 	conf.TmpDir = os.Getenv("SNAPSHOT_TMP_DIR")
 	acceptanceTest := os.Getenv("ACCEPTANCE_TEST")
 	conf.Encryption = os.Getenv("CRYPTO_PASSWORD")
+	conf.S3ServerSideEncryption = os.Getenv("CONSUL_SNAPSHOT_S3_SSE")
+	conf.S3KmsKeyID = os.Getenv("CONSUL_SNAPSHOT_S3_SSE_KMS_KEY_ID")
 
 	// if the environment variable isn't set, just set the dir to /tmp
 	if conf.TmpDir == "" {
