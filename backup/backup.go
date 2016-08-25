@@ -298,12 +298,19 @@ func (b *Backup) compressStagedBackup() {
 // Write the local backup file to S3.
 // There are no tests for this remote operation
 func (b *Backup) writeBackupRemote() {
+	var objectPrefix string
+
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
 
 	t := time.Unix(b.StartTime, 0)
-	remotePath := fmt.Sprintf("backups/%v/%d/%v/%v", t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
-	b.RemoteFilePath = remotePath
+	if b.Config.ObjectPrefix == "" {
+		objectPrefix = "backups"
+	} else {
+		objectPrefix = b.Config.ObjectPrefix
+	}
+
+	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", objectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
 	// re-read the compressed file.  There is probably a better way to do this
 	localFileContents, err := ioutil.ReadFile(b.FullFilename)
