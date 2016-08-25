@@ -30,3 +30,6 @@ _testmain.go
 
 /consul-snapshot
 /consul-snapshot_*
+
+*~
+*.sw[a-z]

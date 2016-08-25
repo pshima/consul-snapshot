@@ -12,17 +12,19 @@ var hostname string
 
 // Config is a struct to hold the backup configuration
 type Config struct {
-	S3Bucket       string
-	S3Region       string
-	S3AccessKey    string
-	S3SecretKey    string
-	Hostname       string
-	BackupInterval time.Duration
-	TmpDir         string
-	Acceptance     bool
-	Version        string
-	Encryption     string
-	ObjectPrefix   string
+	S3Bucket               string
+	S3Region               string
+	S3AccessKey            string
+	S3SecretKey            string
+	Hostname               string
+	BackupInterval         time.Duration
+	TmpDir                 string
+	Acceptance             bool
+	Version                string
+	Encryption             string
+	ObjectPrefix           string
+	S3ServerSideEncryption string
+	S3KmsKeyID             string
 }
 
 // When starting, just set the hostname
@@ -55,6 +57,8 @@ func setEnvVars(conf *Config, tests bool) error {
 	acceptanceTest := os.Getenv("ACCEPTANCE_TEST")
 	conf.Encryption = os.Getenv("CRYPTO_PASSWORD")
 	conf.ObjectPrefix = os.Getenv("CONSUL_SNAPSHOT_UPLOAD_PREFIX")
+	conf.S3ServerSideEncryption = os.Getenv("CONSUL_SNAPSHOT_S3_SSE")
+	conf.S3KmsKeyID = os.Getenv("CONSUL_SNAPSHOT_S3_SSE_KMS_KEY_ID")
 
 	// if the environment variable isn't set, just set the dir to /tmp
 	if conf.TmpDir == "" {
