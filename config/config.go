@@ -65,6 +65,13 @@ func setEnvVars(conf *Config, tests bool) error {
 		conf.TmpDir = "/tmp"
 	}
 
+	// If no prefix is set, set the bucket prefix to "/backups"
+	if conf.ObjectPrefix == "" {
+		conf.ObjectPrefix = "backups"
+	}
+
+	// If no backup interval is set, set it to 60s as a string which is converted
+	// to a time.Duration
 	if backupInterval == "" {
 		backupInterval = "60"
 	}

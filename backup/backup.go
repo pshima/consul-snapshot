@@ -304,13 +304,7 @@ func (b *Backup) writeBackupRemote() {
 
 	t := time.Unix(b.StartTime, 0)
 
-	if b.Config.ObjectPrefix == "" {
-		objectPrefix = "backups"
-	} else {
-		objectPrefix = b.Config.ObjectPrefix
-	}
-
-	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", objectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
+	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", b.Config.ObjectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
 	// re-read the compressed file.  There is probably a better way to do this
 	localFileContents, err := ioutil.ReadFile(b.FullFilename)
@@ -320,11 +314,17 @@ func (b *Backup) writeBackupRemote() {
 
 	// Create the params to pass into the actual uploader
 	params := &s3manager.UploadInput{
-		Bucket:               &b.Config.S3Bucket,
-		Key:                  &b.RemoteFilePath,
-		Body:                 bytes.NewReader(localFileContents),
-		ServerSideEncryption: &b.Config.S3ServerSideEncryption,
-		SSEKMSKeyId:          &b.Config.S3KmsKeyID,
+		Bucket: &b.Config.S3Bucket,
+		Key:    &b.RemoteFilePath,
+		Body:   bytes.NewReader(localFileContents),
+	}
+
+	if b.Config.S3ServerSideEncryption != "" {
+		params.ServerSideEncryption = &b.Config.S3ServerSideEncryption
+	}
+
+	if b.Config.S3KmsKeyID != "" {
+		params.SSEKMSKeyId = &b.Config.S3KmsKeyID
 	}
 
 	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))

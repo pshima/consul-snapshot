@@ -1,3 +1,8 @@
+## 0.2.2
+* Add hostname to backup file
+* Add optional prefix configured via env var
+* Add optional SSE for S3 backups
+
 ## 0.2.1
 * Bug fix for restore path
 
