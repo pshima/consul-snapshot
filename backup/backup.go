@@ -298,8 +298,6 @@ func (b *Backup) compressStagedBackup() {
 // Write the local backup file to S3.
 // There are no tests for this remote operation
 func (b *Backup) writeBackupRemote() {
-	var objectPrefix string
-
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
 
 	t := time.Unix(b.StartTime, 0)
