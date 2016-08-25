@@ -63,7 +63,7 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 
 	// if we are running an Acceptance test then we need to restore from local
 	if conf.Acceptance {
-		restore.LocalFilePath = fmt.Sprintf("%v/acceptancetest.gz", conf.TmpDir)
+		restore.LocalFilePath = fmt.Sprintf("%v/acceptancetest.tar.gz", conf.TmpDir)
 	} else {
 		getRemoteBackup(restore, conf)
 	}

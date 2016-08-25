@@ -320,9 +320,11 @@ func (b *Backup) writeBackupRemote() {
 
 	// Create the params to pass into the actual uploader
 	params := &s3manager.UploadInput{
-		Bucket: &b.Config.S3Bucket,
-		Key:    &b.RemoteFilePath,
-		Body:   bytes.NewReader(localFileContents),
+		Bucket:               &b.Config.S3Bucket,
+		Key:                  &b.RemoteFilePath,
+		Body:                 bytes.NewReader(localFileContents),
+		ServerSideEncryption: &b.Config.S3ServerSideEncryption,
+		SSEKMSKeyId:          &b.Config.S3KmsKeyID,
 	}
 
 	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
