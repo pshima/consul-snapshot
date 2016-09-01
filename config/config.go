@@ -12,17 +12,20 @@ var hostname string
 
 // Config is a struct to hold the backup configuration
 type Config struct {
-	GCSBucket      string
-	S3Bucket       string
-	S3Region       string
-	S3AccessKey    string
-	S3SecretKey    string
-	Hostname       string
-	BackupInterval time.Duration
-	TmpDir         string
-	Acceptance     bool
-	Version        string
-	Encryption     string
+	GCSBucket              string
+	S3Bucket               string
+	S3Region               string
+	S3AccessKey            string
+	S3SecretKey            string
+	Hostname               string
+	BackupInterval         time.Duration
+	TmpDir                 string
+	Acceptance             bool
+	Version                string
+	Encryption             string
+	ObjectPrefix           string
+	S3ServerSideEncryption string
+	S3KmsKeyID             string
 }
 
 // When starting, just set the hostname
@@ -55,12 +58,22 @@ func setEnvVars(conf *Config, tests bool) error {
 	conf.TmpDir = os.Getenv("SNAPSHOT_TMP_DIR")
 	acceptanceTest := os.Getenv("ACCEPTANCE_TEST")
 	conf.Encryption = os.Getenv("CRYPTO_PASSWORD")
+	conf.ObjectPrefix = os.Getenv("CONSUL_SNAPSHOT_UPLOAD_PREFIX")
+	conf.S3ServerSideEncryption = os.Getenv("CONSUL_SNAPSHOT_S3_SSE")
+	conf.S3KmsKeyID = os.Getenv("CONSUL_SNAPSHOT_S3_SSE_KMS_KEY_ID")
 
 	// if the environment variable isn't set, just set the dir to /tmp
 	if conf.TmpDir == "" {
 		conf.TmpDir = "/tmp"
 	}
 
+	// If no prefix is set, set the bucket prefix to "/backups"
+	if conf.ObjectPrefix == "" {
+		conf.ObjectPrefix = "backups"
+	}
+
+	// If no backup interval is set, set it to 60s as a string which is converted
+	// to a time.Duration
 	if backupInterval == "" {
 		backupInterval = "60"
 	}

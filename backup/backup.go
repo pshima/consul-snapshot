@@ -308,6 +308,14 @@ func (b *Backup) writeBackupRemoteS3(localFileContents []byte) {
 		Body:   bytes.NewReader(localFileContents),
 	}
 
+	if b.Config.S3ServerSideEncryption != "" {
+		params.ServerSideEncryption = &b.Config.S3ServerSideEncryption
+	}
+
+	if b.Config.S3KmsKeyID != "" {
+		params.SSEKMSKeyId = &b.Config.S3KmsKeyID
+	}
+
 	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
 	uploader := s3manager.NewUploader(s3Conn)
 	_, err := uploader.Upload(params)
@@ -338,9 +346,8 @@ func (b *Backup) writeBackupRemoteGoogleStorage(localFileContents []byte) {
 
 func (b *Backup) writeBackupRemote() {
 	t := time.Unix(b.StartTime, 0)
-	remotePath := fmt.Sprintf("backups/%v/%d/%v/%v", t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
-	b.RemoteFilePath = remotePath
+	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", b.Config.ObjectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
 
 	// re-read the compressed file.  There is probably a better way to do this
 	localFileContents, err := ioutil.ReadFile(b.FullFilename)
@@ -351,6 +358,7 @@ func (b *Backup) writeBackupRemote() {
 	if len(b.Config.S3Bucket) > 1 {
 		b.writeBackupRemoteS3(localFileContents)
 	}
+
 	if len(b.Config.GCSBucket) > 1 {
 		b.writeBackupRemoteGoogleStorage(localFileContents)
 	}

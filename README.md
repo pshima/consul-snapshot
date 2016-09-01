@@ -24,12 +24,12 @@ consul-snapshot has been used in production since February 2016.
 ## Installation
 Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
 
-With go get: 
+With go get:
 ```
 go get github.com/pshima/consul-snapshot
 ```
 
-From source: 
+From source:
 ```
 git clone https://github.com/pshima/consul-snapshot
 cd consul-snapshot
@@ -47,6 +47,13 @@ Configuration is done from environment variables.
 - BACKUPINTERVAL (how often you want the backup to run in seconds)
 - CRYPTO_PASSWORD (sets a password for encrypting and decrypting backups)
 - SNAPSHOT_TMP_DIR (sets the directory for temporary files, defaults to "/tmp")
+- CONSUL_SNAPSHOT_UPLOAD_PREFIX (an arbitrary prefix to be prepended to the
+  name of each uploaded object, e.g., `consul-dc1`.  Default is `backups`.)
+- CONSUL_SNAPSHOT_S3_SSE (optional server-side encryption
+  algorithm, e.g., `AES256` or `aws:kms`)
+- CONSUL_SNAPSHOT_S3_SSE_KMS_KEY_ID (optional KMS key ID, if
+  server-side encryption is used, and `aws:kms` is used for the
+  encryption algorithm)
 
 And through the consul api there are several options available (https://github.com/hashicorp/consul/blob/master/api/api.go#L126)
 
@@ -91,7 +98,7 @@ Running a restore:
 
 ## Testing
 
-There are some unit tests but not near full coverage.  
+There are some unit tests but not near full coverage.
 
 There is an acceptance test that:
 - Spins up a local consul agent in dev mode
@@ -111,6 +118,6 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Add a web interface to view backups
 - Add metrics
 - Add single key backups
-- Add options to specify paths
 - Use transactions for backups and restores
+- Add support for just running once
 
