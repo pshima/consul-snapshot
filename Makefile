@@ -1,12 +1,16 @@
 all: build test
 
-build:
+build: bootstrap
 	go build
 
 fmt:
 	go fmt `go list ./... | grep -v vendor`
 
-test:
+bootstrap:
+	go get -u -v  github.com/golang/lint/golint
+	go get -u -v github.com/mitchellh/gox
+
+test: bootstrap
 	go test `go list ./... | grep -v /vendor/`
 	go vet `go list ./... | grep -v /vendor/`
 	go list ./... |grep -v /vendor/ | xargs -L1 golint
