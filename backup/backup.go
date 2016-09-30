@@ -71,27 +71,35 @@ func calcSha256(path string) (string, error) {
 }
 
 // Runner is the main runner for a backup
-func Runner(version string) int {
-	// Start up the http server health checks
-	go health.StartServer()
+func Runner(version string, once bool) int {
 
 	conf := config.ParseConfig(false)
 	conf.Version = version
 	client := &consul.Consul{Client: *consul.Client()}
 
-	if conf.Acceptance {
-		doWork(conf, client)
+	if once {
+		err := doWork(conf, client)
+		if err != nil {
+			return 1
+		}
 	} else {
+		// Start up the http server health checks, only needed for daemon-mode
+		go health.StartServer()
+
 		log.Printf("[DEBUG] Backup starting on interval: %v", conf.BackupInterval)
 		ticker := time.NewTicker(conf.BackupInterval)
 		for range ticker.C {
-			doWork(conf, client)
+			err := doWork(conf, client)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
 		}
 	}
+
 	return 0
 }
 
-func doWork(conf *config.Config, client *consul.Consul) {
+func doWork(conf *config.Config, client *consul.Consul) error {
 
 	b := &Backup{
 		Config: conf,
@@ -125,34 +133,34 @@ func doWork(conf *config.Config, client *consul.Consul) {
 
 	log.Print("[INFO] Writing KVs to local backup file")
 	if err := writeFileLocal(b.LocalFilePath, b.LocalKVFileName, b.KVJSONData); err != nil {
-		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalKVFileName, err)
+		return fmt.Errorf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalKVFileName, err)
 	}
 
 	kvchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalKVFileName))
 	if err != nil {
-		log.Fatalf("[ERR] to generate checksum for file %s: %v", b.LocalKVFileName, err)
+		return fmt.Errorf("[ERR] to generate checksum for file %s: %v", b.LocalKVFileName, err)
 	}
 	b.KVFileChecksum = kvchecksum
 
 	log.Print("[INFO] Writing PQs to local backup file")
 	if err := writeFileLocal(b.LocalFilePath, b.LocalPQFileName, b.PQJSONData); err != nil {
-		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalPQFileName, err)
+		return fmt.Errorf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalPQFileName, err)
 	}
 
 	pqchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalPQFileName))
 	if err != nil {
-		log.Fatalf("Unable to generate checksum for file %s: %v", b.LocalPQFileName, err)
+		return fmt.Errorf("Unable to generate checksum for file %s: %v", b.LocalPQFileName, err)
 	}
 	b.PQFileChecksum = pqchecksum
 
 	log.Print("[INFO] Writing ACLs to local backup file")
 	if err := writeFileLocal(b.LocalFilePath, b.LocalACLFileName, b.ACLJSONData); err != nil {
-		log.Fatalf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalACLFileName, err)
+		return fmt.Errorf("[ERR] Unable to write file %s/%s: %v", b.LocalFilePath, b.LocalACLFileName, err)
 	}
 
 	aclchecksum, err := calcSha256(filepath.Join(b.LocalFilePath, b.LocalACLFileName))
 	if err != nil {
-		log.Fatalf("[ERR] Unable to generate checksum for file %s: %v", b.LocalACLFileName, err)
+		return fmt.Errorf("[ERR] Unable to generate checksum for file %s: %v", b.LocalACLFileName, err)
 	}
 	b.ACLFileChecksum = aclchecksum
 
@@ -174,7 +182,7 @@ func doWork(conf *config.Config, client *consul.Consul) {
 	}
 
 	log.Print("[INFO] Backup completed successfully")
-
+	return nil
 }
 
 // KeysToJSON used to marshall the data and put it on a Backup object

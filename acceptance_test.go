@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Pallinder/go-randomdata"
+	randomdata "github.com/Pallinder/go-randomdata"
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/pshima/consul-snapshot/backup"
 	"github.com/pshima/consul-snapshot/config"
@@ -124,7 +124,7 @@ func TestAcceptance(t *testing.T) {
 
 	t.Log("Starting Backup")
 
-	backup.Runner("test")
+	backup.Runner("test", true)
 
 	_, err = c.KV().DeleteTree("", nil)
 	if err != nil {
