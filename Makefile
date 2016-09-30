@@ -1,21 +1,6 @@
 all: build test
 
-deps:
-	go get github.com/aws/aws-sdk-go
-	go get github.com/hashicorp/consul
-	go get github.com/Pallinder/go-randomdata
-	go get github.com/mitchellh/cli
-	go get github.com/golang/lint/golint
-	go get
-
-updatedeps:
-	go get -u -v github.com/aws/aws-sdk-go
-	go get -u -v  github.com/hashicorp/consul
-	go get -u -v  github.com/Pallinder/go-randomdata
-	go get -u -v  github.com/mitchellh/cli
-	go get -u -v  github.com/golang/lint/golint
-
-build: deps
+build:
 	go build
 
 fmt:
@@ -26,16 +11,11 @@ test:
 	go vet ./...
 	golint ./...
 
-gox:
-	go get github.com/mitchellh/gox
-	gox -build-toolchain
-
 build-all: test
-	which gox || make gox
 	gox -arch="386 amd64 arm" -os="darwin linux windows" github.com/pshima/consul-snapshot
 
-install: consul-snapshot
-	cp consul-snapshot /usr/local/bin/consul-snapshot
+install:
+	go install
 
 cov:
 	gocov test ./... | gocov-html > /tmp/coverage.html
