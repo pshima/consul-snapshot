@@ -350,7 +350,7 @@ func (b *Backup) postProcess() {
 
 	var err error
 
-	lastbackup := &consulapi.KVPair{Key: "service/consul-snapshot/lastbackup", Value: []byte(startstring)}
+	lastbackup := &consulapi.KVPair{Key: "services/consul-snapshot/lastbackup", Value: []byte(startstring)}
 	_, err = b.Client.Client.KV().Put(lastbackup, writeOpt)
 	if err != nil {
 		log.Fatalf("[ERR] Failed writing last backup timestamp to consul: %v", err)
