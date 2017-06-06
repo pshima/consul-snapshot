@@ -15,7 +15,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 		http.Error(resp, "[ERR] Unable to create a consul client for health checks", 500)
 	}
 	queryOpt := &consulapi.QueryOptions{}
-	lastBackup, _, err := consul.KV().Get("service/consul-snapshot/lastbackup", queryOpt)
+	lastBackup, _, err := consul.KV().Get("services/consul-snapshot/lastbackup", queryOpt)
 	if err != nil || lastBackup == nil {
 		http.Error(resp, "No previous backup detected or unable to get backup key!", 500)
 		return
