@@ -24,6 +24,7 @@ func TestSetEnvVars(t *testing.T) {
 	os.Setenv("S3REGION", "regiontest")
 	os.Setenv("AWS_ACCESS_KEY_ID", "accesskeytest")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "secretkeytest")
+	os.Setenv("GCSBUCKET", "buckettest")
 	os.Setenv("BACKUPINTERVAL", "60")
 	os.Setenv("SNAPSHOT_TMP_DIR", "/foo")
 	os.Setenv("CRYPTO_PASSWORD", "bar")
@@ -41,6 +42,9 @@ func TestSetEnvVars(t *testing.T) {
 	}
 	if c.S3SecretKey != "secretkeytest" {
 		t.Errorf("Expected %v got %v", "secretkeytest", c.S3SecretKey)
+	}
+	if c.GCSBucket != "buckettest" {
+		t.Errorf("Expected %v got %v", "buckettest", c.GCSBucket)
 	}
 	if c.BackupInterval != 60*time.Second {
 		t.Errorf("Expected %v got %v", 60, c.BackupInterval)
@@ -60,6 +64,7 @@ func TestSetEnvVarsAcceptanceTrue(t *testing.T) {
 	os.Setenv("S3REGION", "regiontest")
 	os.Setenv("AWS_ACCESS_KEY_ID", "accesskeytest")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "secretkeytest")
+	os.Setenv("GCSBUCKET", "buckettest")
 	os.Setenv("BACKUPINTERVAL", "60")
 	os.Setenv("SNAPSHOT_TMP_DIR", "/foo")
 	os.Setenv("ACCEPTANCE_TEST", "asdf")
@@ -78,6 +83,9 @@ func TestSetEnvVarsAcceptanceTrue(t *testing.T) {
 	}
 	if c.S3SecretKey != "secretkeytest" {
 		t.Errorf("Expected %v got %v", "secretkeytest", c.S3SecretKey)
+	}
+	if c.GCSBucket != "buckettest" {
+		t.Errorf("Expected %v got %v", "buckettest", c.GCSBucket)
 	}
 	if c.BackupInterval != 60*time.Second {
 		t.Errorf("Expected %v got %v", 60, c.BackupInterval)
@@ -108,5 +116,4 @@ func TestParseConfig(t *testing.T) {
 	if conf.Hostname != hostname {
 		t.Error("Hostname not being set correctly!")
 	}
-
 }

@@ -14,8 +14,8 @@ consul-snapshot has been used in production since February 2016.
 - Back up K/V Store
 - Back up ACLs
 - Back up Prepared Queries (Consul 0.6.x)
-- Store backups in Amazon S3
-- Restore backups directly from S3
+- Store backups in Amazon S3 / Google Cloud Storage
+- Restore backups directly from S3 / Google Cloud Storage
 - AWS encrypted backups and restores with configurable passphrase
 - Consul compatible health checks for age of last backup
 - Configurable consul settings and backup interval
@@ -43,6 +43,7 @@ Configuration is done from environment variables.
 - S3REGION (the region the s3 bucket is located)
 - AWS_ACCESS_KEY_ID (the access key id used to access the bucket)
 - AWS_SECRET_ACCESS_KEY (the secret key used to access the bucket)
+- GCSBUCKET (the Google Cloud Storage bucket where backups should be delivered)
 - BACKUPINTERVAL (how often you want the backup to run in seconds)
 - CRYPTO_PASSWORD (sets a password for encrypting and decrypting backups)
 - SNAPSHOT_TMP_DIR (sets the directory for temporary files, defaults to "/tmp")

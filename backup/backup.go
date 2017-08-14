@@ -2,6 +2,7 @@ package backup
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -22,6 +23,7 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
+	"google.golang.org/cloud/storage"
 )
 
 // Backup is the backup itself including configuration and data
@@ -305,19 +307,8 @@ func (b *Backup) compressStagedBackup() {
 
 // Write the local backup file to S3.
 // There are no tests for this remote operation
-func (b *Backup) writeBackupRemote() {
+func (b *Backup) writeBackupRemoteS3(localFileContents []byte) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
-
-	t := time.Unix(b.StartTime, 0)
-
-	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", b.Config.ObjectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
-
-	// re-read the compressed file.  There is probably a better way to do this
-	localFileContents, err := ioutil.ReadFile(b.FullFilename)
-	if err != nil {
-		log.Fatalf("[ERR] Could not read compressed file!: %v", err)
-	}
-
 	// Create the params to pass into the actual uploader
 	params := &s3manager.UploadInput{
 		Bucket: &b.Config.S3Bucket,
@@ -335,9 +326,49 @@ func (b *Backup) writeBackupRemote() {
 
 	log.Printf("[INFO] Uploading %v/%v to S3 in %v", string(b.Config.S3Bucket), b.RemoteFilePath, string(b.Config.S3Region))
 	uploader := s3manager.NewUploader(s3Conn)
-	_, err = uploader.Upload(params)
+	_, err := uploader.Upload(params)
 	if err != nil {
 		log.Fatalf("[ERR] Could not upload to S3!: %v", err)
+	}
+}
+
+// Write the local backup file to Google Cloud Storage.
+// There are no tests for this remote operation
+func (b *Backup) writeBackupRemoteGoogleStorage(localFileContents []byte) {
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Fatalf("[ERR] Could not initialize connection with Google Cloud Storage!: %v", err)
+	}
+	wc := client.Bucket(b.Config.GCSBucket).Object(b.RemoteFilePath).NewWriter(ctx)
+	log.Printf("[INFO] Uploading %v/%v to GCS", string(b.Config.GCSBucket), b.RemoteFilePath)
+	wc.ContentType = "text/plain"
+	// wc.ACL = []storage.ACLRule{{AllUsers: storage.AllUsers, RoleReader: storage.RoleReader}}
+	if _, err := wc.Write(localFileContents); err != nil {
+		log.Fatalf("[ERR] Could not upload to GCS!: %v", err)
+	}
+	if err := wc.Close(); err != nil {
+		log.Fatalf("[ERR] Could not upload to GCS!: %v", err)
+	}
+}
+
+func (b *Backup) writeBackupRemote() {
+	t := time.Unix(b.StartTime, 0)
+
+	b.RemoteFilePath = fmt.Sprintf("%s/%v/%d/%v/%v", b.Config.ObjectPrefix, t.Year(), t.Month(), t.Day(), filepath.Base(b.FullFilename))
+
+	// re-read the compressed file.  There is probably a better way to do this
+	localFileContents, err := ioutil.ReadFile(b.FullFilename)
+	if err != nil {
+		log.Fatalf("[ERR] Could not read compressed file!: %v", err)
+	}
+
+	if len(b.Config.S3Bucket) > 1 {
+		b.writeBackupRemoteS3(localFileContents)
+	}
+
+	if len(b.Config.GCSBucket) > 1 {
+		b.writeBackupRemoteGoogleStorage(localFileContents)
 	}
 }
 

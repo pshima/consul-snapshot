@@ -1,4 +1,5 @@
 ## 0.2.3 (Unreleased)
+* Add support for Google Cloud Storage
 *
 
 ## 0.2.2
