@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -23,7 +24,6 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
-	"google.golang.org/cloud/storage"
 )
 
 // Backup is the backup itself including configuration and data
