@@ -6,7 +6,7 @@ deps:
 	go get github.com/Pallinder/go-randomdata
 	go get github.com/mitchellh/cli
 	go get github.com/golang/lint/golint
-	go get google.golang.org/cloud/storage
+	go get cloud.google.com/go/storage
 	go get
 
 updatedeps:
@@ -15,7 +15,7 @@ updatedeps:
 	go get -u -v github.com/Pallinder/go-randomdata
 	go get -u -v github.com/mitchellh/cli
 	go get -u -v github.com/golang/lint/golint
-	go get -u -v google.golang.org/cloud/storage
+	go get -u -v cloud.google.com/go/storage
 
 build: deps
 	go build
