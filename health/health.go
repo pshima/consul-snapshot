@@ -10,10 +10,11 @@ import (
 )
 
 func handler(resp http.ResponseWriter, req *http.Request) {
-	consul, err := consulapi.NewClient(consulapi.DefaultConfig())
+	consul, err := consulapi.NewClient(consulapi.DefaultNonPooledConfig())
 	if err != nil {
 		http.Error(resp, "[ERR] Unable to create a consul client for health checks", 500)
 	}
+
 	queryOpt := &consulapi.QueryOptions{}
 	lastBackup, _, err := consul.KV().Get("service/consul-snapshot/lastbackup", queryOpt)
 	if err != nil || lastBackup == nil {
