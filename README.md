@@ -121,3 +121,4 @@ To run the acceptance test set ACCEPTANCE_TEST=1
 - Use transactions for backups and restores
 - Add support for just running once
 - Add the ability to restore PQs and ACLs (currently back up only)
+- Look at options for using consul's native snapshot commands
