@@ -1,6 +1,7 @@
-## 0.2.3 (Unreleased)
+## 0.2.3 
 * Add support for Google Cloud Storage
-*
+* Updated google cloud import
+* Changed health check to not use connection pool
 
 ## 0.2.2
 * Add hostname to backup file
