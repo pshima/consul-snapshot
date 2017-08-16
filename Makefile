@@ -35,7 +35,7 @@ test: bootstrap
 	go list ./... |grep -v /vendor/ | xargs -L1 golint
 
 build-all: test
-	gox -arch="386 amd64 arm" -os="darwin linux windows" github.com/pshima/consul-snapshot
+	gox -arch="386 amd64" -os="darwin linux windows" github.com/pshima/consul-snapshot
 
 install:
 	go install

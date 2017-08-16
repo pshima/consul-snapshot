@@ -24,6 +24,8 @@ consul-snapshot has been used in production since February 2016.
 ## Installation
 Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
 
+consul-snapshot requires go 1.8.3 to build as consul requires 1.8.3.
+
 With go get:
 ```
 go get github.com/pshima/consul-snapshot
@@ -70,30 +72,51 @@ Authentication is done through the above environment variables.  Credentials can
 Running a backup:
 ```
 % consul-snapshot backup
-[INFO] v0.1.4: Starting Consul Snapshot
-2016/07/08 12:01:47 [DEBUG] Backup starting on interval: 5s
-2016/07/08 12:01:52 [INFO] Starting Backup At: 1468004512
-2016/07/08 12:01:52 [INFO] Listing keys from consul
-2016/07/08 12:01:52 [INFO] Converting 2 keys to JSON
-2016/07/08 12:01:52 [INFO] Writing Local Backup File
-2016/07/08 12:01:52 [DEBUG] Wrote 257 bytes to file, /tmp/consul.backup.1468004512.gz
-2016/07/08 12:01:52 [INFO] Writing Backup to Remote File
-2016/07/08 12:01:52 [INFO] Uploading test9898989/backups/2016/7/8/consul.backup.1468004512.gz to S3 in us-west-2
-2016/07/08 12:01:52 [INFO] Running post processing
-2016/07/08 12:01:52 [INFO] Backup completed successfully
+[INFO] v0.2.3: Starting Consul Snapshot
+2017/08/16 09:33:25 [DEBUG] Backup starting on interval: 15s
+2017/08/16 09:33:40 [INFO] Starting Backup At: 1502901220
+2017/08/16 09:33:40 [INFO] Listing keys from consul
+2017/08/16 09:33:40 [INFO] Converting 4 keys to JSON
+2017/08/16 09:33:40 [INFO] Listing Prepared Queries from consul
+2017/08/16 09:33:40 [INFO] Converting 0 keys to JSON
+2017/08/16 09:33:40 [INFO] Listing ACLs from consul
+2017/08/16 09:33:40 [INFO] ACL support detected as disbaled, skipping
+2017/08/16 09:33:40 [INFO] Converting 0 ACLs to JSON
+2017/08/16 09:33:40 [INFO] Preparing temporary directory for backup staging
+2017/08/16 09:33:40 [INFO] Writing KVs to local backup file
+2017/08/16 09:33:40 [DEBUG] Wrote 424 bytes to file, /tmp/macbook.local.consul.snapshot.1502901220/consul.kv.1502901220.json
+2017/08/16 09:33:40 [INFO] Writing PQs to local backup file
+2017/08/16 09:33:40 [DEBUG] Wrote 2 bytes to file, /tmp/macbook.local.consul.snapshot.1502901220/consul.pq.1502901220.json
+2017/08/16 09:33:40 [INFO] Writing ACLs to local backup file
+2017/08/16 09:33:40 [DEBUG] Wrote 2 bytes to file, /tmp/macbook.local.consul.snapshot.1502901220/consul.acl.1502901220.json
+2017/08/16 09:33:40 [DEBUG] Wrote 339 bytes to file, /tmp/macbook.local.consul.snapshot.1502901220/meta.json
+2017/08/16 09:33:40 [INFO] Writing Backup to Remote File
+2017/08/16 09:33:40 [INFO] Uploading consul-backup-testing/backups/2017/8/16/macbook.local.consul.snapshot.1502901220.tar.gz to S3 in us-west-2
+2017/08/16 09:33:40 [INFO] Running post processing
+2017/08/16 09:33:40 [INFO] Backup completed successfully
 ```
 
 Running a restore:
 ```
-% consul-snapshot restore backups/2016/7/8/consul.backup.1468004512.gz
-[INFO] v0.1.4: Starting Consul Snapshot
-2016/07/08 12:23:14 [DEBUG] Starting restore of test9898989/backups/2016/7/8/consul.backup.1468004512.gz
-2016/07/08 12:23:14 [INFO] Downloading test9898989/tmp/backups/2016/7/8/consul.backup.1468004512.gz from S3 in us-west-2
-2016/07/08 12:23:14 [INFO] Download completed
-2016/07/08 12:23:14 [INFO] Extracting Backup File
-2016/07/08 12:23:14 [INFO] Extracted 2 keys to restore
-2016/07/08 12:23:14 [INFO] Restored 2 keys with 0 errors
-2016/07/08 12:23:14 [INFO] Restore completed.
+% consul-snapshot restore backups/2017/8/16/macbook.local.consul.snapshot.1502901220.tar.gz
+[INFO] v0.2.3: Starting Consul Snapshot
+2017/08/16 09:36:04 [DEBUG] Starting restore of consul-backup-testing/backups/2017/8/16/macbook.local.consul.snapshot.1502901220.tar.gz
+2017/08/16 09:36:04 [INFO] Downloading consul-backup-testingbackups/2017/8/16/macbook.local.consul.snapshot.1502901220.tar.gz from S3 in us-west-2
+2017/08/16 09:36:04 [INFO] Download completed
+2017/08/16 09:36:04 [INFO] Checking encryption status of backup
+2017/08/16 09:36:04 [INFO] Extracting backup
+2017/08/16 09:36:04 [INFO] Inspecting backup contents
+2017/08/16 09:36:04 [INFO] Found valid metadata of snapshot version 0.2.4 with unix_timestamp 1502901220
+2017/08/16 09:36:04 [INFO] Parsing KV Data
+2017/08/16 09:36:04 [INFO] Loaded 4 keys to restore
+2017/08/16 09:36:04 [INFO] Parsing PQ Data
+2017/08/16 09:36:04 [INFO] Loaded 0 Prepared Queries to restore
+2017/08/16 09:36:04 [INFO] Parsing ACL Data
+2017/08/16 09:36:04 [INFO] Loaded 0 ACLs to restore
+2017/08/16 09:36:04 [INFO] Restored 4 keys with 0 errors
+2017/08/16 09:36:04 [WARN] PQ restoration currently unsupported
+2017/08/16 09:36:04 [WARN] ACL restoration currently unsupported
+2017/08/16 09:36:04 [INFO] Restore completed.
 ```
 
 ## Testing
