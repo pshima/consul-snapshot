@@ -7,6 +7,7 @@ deps:
 	go get github.com/mitchellh/cli
 	go get github.com/golang/lint/golint
 	go get cloud.google.com/go/storage
+	go get golang.org/x/net/context
 	go get
 
 updatedeps:
@@ -16,6 +17,7 @@ updatedeps:
 	go get -u -v github.com/mitchellh/cli
 	go get -u -v github.com/golang/lint/golint
 	go get -u -v cloud.google.com/go/storage
+	go get -u -v golang.org/x/net/context
 
 build: deps
 	go build
