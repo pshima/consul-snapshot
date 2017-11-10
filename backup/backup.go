@@ -171,7 +171,7 @@ func doWork(conf *config.Config, client *consul.Consul) error {
 
 	if b.Config.Encryption != "" {
 		if err = crypt.EncryptFile(b.FullFilename, b.Config.Encryption); err != nil {
-			return fmt.Error("[ERR] at backup file encryption: %s", err)
+			return fmt.Errorf("[ERR] at backup file encryption: %s", err)
 		}
 	}
 
