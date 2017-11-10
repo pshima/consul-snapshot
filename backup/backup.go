@@ -170,7 +170,9 @@ func doWork(conf *config.Config, client *consul.Consul) error {
 	b.compressStagedBackup()
 
 	if b.Config.Encryption != "" {
-		crypt.EncryptFile(b.LocalFilePath, b.Config.Encryption)
+		if err = crypt.EncryptFile(b.FullFilename, b.Config.Encryption); err != nil {
+			return fmt.Error("[ERR] at backup file encryption: %s", err)
+		}
 	}
 
 	if conf.Acceptance {

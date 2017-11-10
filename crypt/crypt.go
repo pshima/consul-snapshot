@@ -36,7 +36,7 @@ func CheckEncryption(source string) (bool, error) {
 func EncryptFile(sourceFile string, passphrase string) error {
 	source, err := ioutil.ReadFile(sourceFile)
 	if err != nil {
-		return fmt.Errorf("Unable to read backup file at %s to encrypt: %v", source, err)
+		return fmt.Errorf("Unable to read backup file at %s to encrypt: %v", sourceFile, err)
 	}
 
 	salt := make([]byte, encryptionSaltLen)
