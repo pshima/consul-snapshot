@@ -1,10 +1,12 @@
-# Go CLI Library [![GoDoc](https://godoc.org/github.com/mitchellh/cli?status.png)](https://godoc.org/github.com/mitchellh/cli)
+# Go CLI Library [![GoDoc](https://godoc.org/github.com/mitchellh/cli?status.png)](https://pkg.go.dev/github.com/mitchellh/cli)
 
-cli is a library for implementing powerful command-line interfaces in Go.
+cli is a library for implementing command-line interfaces in Go.
 cli is the library that powers the CLI for
 [Packer](https://github.com/mitchellh/packer),
-[Serf](https://github.com/hashicorp/serf), and
-[Consul](https://github.com/hashicorp/consul).
+[Consul](https://github.com/hashicorp/consul),
+[Vault](https://github.com/hashicorp/vault),
+[Terraform](https://github.com/hashicorp/terraform),
+[Nomad](https://github.com/hashicorp/nomad), and more.
 
 ## Features
 
@@ -15,7 +17,10 @@ cli is the library that powers the CLI for
 * Optional support for default subcommands so `cli` does something
   other than error.
 
-* Automatic help generation for listing subcommands
+* Support for shell autocompletion of subcommands, flags, and arguments
+  with callbacks in Go. You don't need to write any shell code.
+
+* Automatic help generation for listing subcommands.
 
 * Automatic help flag recognition of `-h`, `--help`, etc.
 

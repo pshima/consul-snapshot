@@ -6,12 +6,12 @@ import (
 	"io"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/client"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -40,18 +40,17 @@ const DefaultUploadConcurrency = 5
 //
 // Example:
 //
-//     u := s3manager.NewUploader(opts)
-//     output, err := u.upload(input)
-//     if err != nil {
-//         if multierr, ok := err.(s3manager.MultiUploadFailure); ok {
-//             // Process error and its associated uploadID
-//             fmt.Println("Error:", multierr.Code(), multierr.Message(), multierr.UploadID())
-//         } else {
-//             // Process error generically
-//             fmt.Println("Error:", err.Error())
-//         }
-//     }
-//
+//	u := s3manager.NewUploader(opts)
+//	output, err := u.upload(input)
+//	if err != nil {
+//	    if multierr, ok := err.(s3manager.MultiUploadFailure); ok {
+//	        // Process error and its associated uploadID
+//	        fmt.Println("Error:", multierr.Code(), multierr.Message(), multierr.UploadID())
+//	    } else {
+//	        // Process error generically
+//	        fmt.Println("Error:", err.Error())
+//	    }
+//	}
 type MultiUploadFailure interface {
 	awserr.Error
 
@@ -77,7 +76,7 @@ type multiUploadError struct {
 
 // Error returns the string representation of the error.
 //
-// See apierr.BaseError ErrorWithExtra for output format
+// # See apierr.BaseError ErrorWithExtra for output format
 //
 // Satisfies the error interface.
 func (m multiUploadError) Error() string {
@@ -96,94 +95,6 @@ func (m multiUploadError) UploadID() string {
 	return m.uploadID
 }
 
-// UploadInput contains all input for upload requests to Amazon S3.
-type UploadInput struct {
-	// The canned ACL to apply to the object.
-	ACL *string `location:"header" locationName:"x-amz-acl" type:"string"`
-
-	Bucket *string `location:"uri" locationName:"Bucket" type:"string" required:"true"`
-
-	// Specifies caching behavior along the request/reply chain.
-	CacheControl *string `location:"header" locationName:"Cache-Control" type:"string"`
-
-	// Specifies presentational information for the object.
-	ContentDisposition *string `location:"header" locationName:"Content-Disposition" type:"string"`
-
-	// Specifies what content encodings have been applied to the object and thus
-	// what decoding mechanisms must be applied to obtain the media-type referenced
-	// by the Content-Type header field.
-	ContentEncoding *string `location:"header" locationName:"Content-Encoding" type:"string"`
-
-	// The language the content is in.
-	ContentLanguage *string `location:"header" locationName:"Content-Language" type:"string"`
-
-	// A standard MIME type describing the format of the object data.
-	ContentType *string `location:"header" locationName:"Content-Type" type:"string"`
-
-	// The date and time at which the object is no longer cacheable.
-	Expires *time.Time `location:"header" locationName:"Expires" type:"timestamp" timestampFormat:"rfc822"`
-
-	// Gives the grantee READ, READ_ACP, and WRITE_ACP permissions on the object.
-	GrantFullControl *string `location:"header" locationName:"x-amz-grant-full-control" type:"string"`
-
-	// Allows grantee to read the object data and its metadata.
-	GrantRead *string `location:"header" locationName:"x-amz-grant-read" type:"string"`
-
-	// Allows grantee to read the object ACL.
-	GrantReadACP *string `location:"header" locationName:"x-amz-grant-read-acp" type:"string"`
-
-	// Allows grantee to write the ACL for the applicable object.
-	GrantWriteACP *string `location:"header" locationName:"x-amz-grant-write-acp" type:"string"`
-
-	Key *string `location:"uri" locationName:"Key" type:"string" required:"true"`
-
-	// A map of metadata to store with the object in S3.
-	Metadata map[string]*string `location:"headers" locationName:"x-amz-meta-" type:"map"`
-
-	// Confirms that the requester knows that she or he will be charged for the
-	// request. Bucket owners need not specify this parameter in their requests.
-	// Documentation on downloading objects from requester pays buckets can be found
-	// at http://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectsinRequesterPaysBuckets.html
-	RequestPayer *string `location:"header" locationName:"x-amz-request-payer" type:"string"`
-
-	// Specifies the algorithm to use to when encrypting the object (e.g., AES256,
-	// aws:kms).
-	SSECustomerAlgorithm *string `location:"header" locationName:"x-amz-server-side-encryption-customer-algorithm" type:"string"`
-
-	// Specifies the customer-provided encryption key for Amazon S3 to use in encrypting
-	// data. This value is used to store the object and then it is discarded; Amazon
-	// does not store the encryption key. The key must be appropriate for use with
-	// the algorithm specified in the x-amz-server-side​-encryption​-customer-algorithm
-	// header.
-	SSECustomerKey *string `location:"header" locationName:"x-amz-server-side-encryption-customer-key" type:"string"`
-
-	// Specifies the 128-bit MD5 digest of the encryption key according to RFC 1321.
-	// Amazon S3 uses this header for a message integrity check to ensure the encryption
-	// key was transmitted without error.
-	SSECustomerKeyMD5 *string `location:"header" locationName:"x-amz-server-side-encryption-customer-key-MD5" type:"string"`
-
-	// Specifies the AWS KMS key ID to use for object encryption. All GET and PUT
-	// requests for an object protected by AWS KMS will fail if not made via SSL
-	// or using SigV4. Documentation on configuring any of the officially supported
-	// AWS SDKs and CLI can be found at http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingAWSSDK.html#specify-signature-version
-	SSEKMSKeyId *string `location:"header" locationName:"x-amz-server-side-encryption-aws-kms-key-id" type:"string"`
-
-	// The Server-side encryption algorithm used when storing this object in S3
-	// (e.g., AES256, aws:kms).
-	ServerSideEncryption *string `location:"header" locationName:"x-amz-server-side-encryption" type:"string"`
-
-	// The type of storage to use for the object. Defaults to 'STANDARD'.
-	StorageClass *string `location:"header" locationName:"x-amz-storage-class" type:"string"`
-
-	// If the bucket is configured as a website, redirects requests for this object
-	// to another object in the same bucket or to an external URL. Amazon S3 stores
-	// the value of this header in the object metadata.
-	WebsiteRedirectLocation *string `location:"header" locationName:"x-amz-website-redirect-location" type:"string"`
-
-	// The readable body payload to send to S3.
-	Body io.Reader
-}
-
 // UploadOutput represents a response from the Upload() call.
 type UploadOutput struct {
 	// The URL where the object was uploaded to.
@@ -197,19 +108,40 @@ type UploadOutput struct {
 	// The ID for a multipart upload to S3. In the case of an error the error
 	// can be cast to the MultiUploadFailure interface to extract the upload ID.
 	UploadID string
+
+	// Entity tag of the object.
+	ETag *string
+}
+
+// WithUploaderRequestOptions appends to the Uploader's API request options.
+func WithUploaderRequestOptions(opts ...request.Option) func(*Uploader) {
+	return func(u *Uploader) {
+		u.RequestOptions = append(u.RequestOptions, opts...)
+	}
 }
 
 // The Uploader structure that calls Upload(). It is safe to call Upload()
 // on this structure for multiple objects and across concurrent goroutines.
 // Mutating the Uploader's properties is not safe to be done concurrently.
+//
+// The ContentMD5 member for pre-computed MD5 checksums will be ignored for
+// multipart uploads. Objects that will be uploaded in a single part, the
+// ContentMD5 will be used.
+//
+// The Checksum members for pre-computed checksums will be ignored for
+// multipart uploads. Objects that will be uploaded in a single part, will
+// include the checksum member in the request.
 type Uploader struct {
 	// The buffer size (in bytes) to use when buffering data into chunks and
 	// sending them as parts to S3. The minimum allowed part size is 5MB, and
-	// if this value is set to zero, the DefaultPartSize value will be used.
+	// if this value is set to zero, the DefaultUploadPartSize value will be used.
 	PartSize int64
 
-	// The number of goroutines to spin up in parallel when sending parts.
-	// If this is set to zero, the DefaultUploadConcurrency value will be used.
+	// The number of goroutines to spin up in parallel per call to Upload when
+	// sending parts. If this is set to zero, the DefaultUploadConcurrency value
+	// will be used.
+	//
+	// The concurrency pool is not shared between calls to Upload.
 	Concurrency int
 
 	// Setting this value to true will cause the SDK to avoid calling
@@ -223,12 +155,29 @@ type Uploader struct {
 	// MaxUploadParts is the max number of parts which will be uploaded to S3.
 	// Will be used to calculate the partsize of the object to be uploaded.
 	// E.g: 5GB file, with MaxUploadParts set to 100, will upload the file
-	// as 100, 50MB parts.
-	// With a limited of s3.MaxUploadParts (10,000 parts).
+	// as 100, 50MB parts. With a limited of s3.MaxUploadParts (10,000 parts).
+	//
+	// MaxUploadParts must not be used to limit the total number of bytes uploaded.
+	// Use a type like to io.LimitReader (https://golang.org/pkg/io/#LimitedReader)
+	// instead. An io.LimitReader is helpful when uploading an unbounded reader
+	// to S3, and you know its maximum size. Otherwise the reader's io.EOF returned
+	// error must be used to signal end of stream.
+	//
+	// Defaults to package const's MaxUploadParts value.
 	MaxUploadParts int
 
 	// The client to use when uploading to S3.
 	S3 s3iface.S3API
+
+	// List of request options that will be passed down to individual API
+	// operation requests made by the uploader.
+	RequestOptions []request.Option
+
+	// Defines the buffer strategy used when uploading a part
+	BufferProvider ReadSeekerWriteToProvider
+
+	// partPool allows for the re-usage of streaming payload part buffers between upload calls
+	partPool byteSlicePool
 }
 
 // NewUploader creates a new Uploader instance to upload objects to S3. Pass In
@@ -237,28 +186,36 @@ type Uploader struct {
 // satisfies the client.ConfigProvider interface.
 //
 // Example:
-//     // The session the S3 Uploader will use
-//     sess, err := session.NewSession()
 //
-//     // Create an uploader with the session and default options
-//     uploader := s3manager.NewUploader(sess)
+//	// The session the S3 Uploader will use
+//	sess := session.Must(session.NewSession())
 //
-//     // Create an uploader with the session and custom options
-//     uploader := s3manager.NewUploader(session, func(u *s3manager.Uploader) {
-//          u.PartSize = 64 * 1024 * 1024 // 64MB per part
-//     })
+//	// Create an uploader with the session and default options
+//	uploader := s3manager.NewUploader(sess)
+//
+//	// Create an uploader with the session and custom options
+//	uploader := s3manager.NewUploader(session, func(u *s3manager.Uploader) {
+//	     u.PartSize = 64 * 1024 * 1024 // 64MB per part
+//	})
 func NewUploader(c client.ConfigProvider, options ...func(*Uploader)) *Uploader {
+	return newUploader(s3.New(c), options...)
+}
+
+func newUploader(client s3iface.S3API, options ...func(*Uploader)) *Uploader {
 	u := &Uploader{
-		S3:                s3.New(c),
+		S3:                client,
 		PartSize:          DefaultUploadPartSize,
 		Concurrency:       DefaultUploadConcurrency,
 		LeavePartsOnError: false,
 		MaxUploadParts:    MaxUploadParts,
+		BufferProvider:    defaultUploadBufferProvider(),
 	}
 
 	for _, option := range options {
 		option(u)
 	}
+
+	u.partPool = newByteSlicePool(u.PartSize)
 
 	return u
 }
@@ -268,33 +225,22 @@ func NewUploader(c client.ConfigProvider, options ...func(*Uploader)) *Uploader 
 // a S3 service client to make S3 API calls.
 //
 // Example:
-//     // The session the S3 Uploader will use
-//     sess, err := session.NewSession()
 //
-//     // S3 service client the Upload manager will use.
-//     s3Svc := s3.New(sess)
+//	// The session the S3 Uploader will use
+//	sess := session.Must(session.NewSession())
 //
-//     // Create an uploader with S3 client and default options
-//     uploader := s3manager.NewUploaderWithClient(s3Svc)
+//	// S3 service client the Upload manager will use.
+//	s3Svc := s3.New(sess)
 //
-//     // Create an uploader with S3 client and custom options
-//     uploader := s3manager.NewUploaderWithClient(s3Svc, func(u *s3manager.Uploader) {
-//          u.PartSize = 64 * 1024 * 1024 // 64MB per part
-//     })
+//	// Create an uploader with S3 client and default options
+//	uploader := s3manager.NewUploaderWithClient(s3Svc)
+//
+//	// Create an uploader with S3 client and custom options
+//	uploader := s3manager.NewUploaderWithClient(s3Svc, func(u *s3manager.Uploader) {
+//	     u.PartSize = 64 * 1024 * 1024 // 64MB per part
+//	})
 func NewUploaderWithClient(svc s3iface.S3API, options ...func(*Uploader)) *Uploader {
-	u := &Uploader{
-		S3:                svc,
-		PartSize:          DefaultUploadPartSize,
-		Concurrency:       DefaultUploadConcurrency,
-		LeavePartsOnError: false,
-		MaxUploadParts:    MaxUploadParts,
-	}
-
-	for _, option := range options {
-		option(u)
-	}
-
-	return u
+	return newUploader(svc, options...)
 }
 
 // Upload uploads an object to S3, intelligently buffering large files into
@@ -305,37 +251,122 @@ func NewUploaderWithClient(svc s3iface.S3API, options ...func(*Uploader)) *Uploa
 // upload. These options are copies of the Uploader instance Upload is called from.
 // Modifying the options will not impact the original Uploader instance.
 //
+// Use the WithUploaderRequestOptions helper function to pass in request
+// options that will be applied to all API operations made with this uploader.
+//
 // It is safe to call this method concurrently across goroutines.
 //
 // Example:
-//     // Upload input parameters
-//     upParams := &s3manager.UploadInput{
-//         Bucket: &bucketName,
-//         Key:    &keyName,
-//         Body:   file,
-//     }
 //
-//     // Perform an upload.
-//     result, err := uploader.Upload(upParams)
+//	// Upload input parameters
+//	upParams := &s3manager.UploadInput{
+//	    Bucket: &bucketName,
+//	    Key:    &keyName,
+//	    Body:   file,
+//	}
 //
-//     // Perform upload with options different than the those in the Uploader.
-//     result, err := uploader.Upload(upParams, func(u *s3manager.Uploader) {
-//          u.PartSize = 10 * 1024 * 1024 // 10MB part size
-//          u.LeavePartsOnError = true    // Don't delete the parts if the upload fails.
-//     })
+//	// Perform an upload.
+//	result, err := uploader.Upload(upParams)
+//
+//	// Perform upload with options different than the those in the Uploader.
+//	result, err := uploader.Upload(upParams, func(u *s3manager.Uploader) {
+//	     u.PartSize = 10 * 1024 * 1024 // 10MB part size
+//	     u.LeavePartsOnError = true    // Don't delete the parts if the upload fails.
+//	})
 func (u Uploader) Upload(input *UploadInput, options ...func(*Uploader)) (*UploadOutput, error) {
-	i := uploader{in: input, ctx: u}
+	return u.UploadWithContext(aws.BackgroundContext(), input, options...)
+}
 
-	for _, option := range options {
-		option(&i.ctx)
+// UploadWithContext uploads an object to S3, intelligently buffering large
+// files into smaller chunks and sending them in parallel across multiple
+// goroutines. You can configure the buffer size and concurrency through the
+// Uploader's parameters.
+//
+// UploadWithContext is the same as Upload with the additional support for
+// Context input parameters. The Context must not be nil. A nil Context will
+// cause a panic. Use the context to add deadlining, timeouts, etc. The
+// UploadWithContext may create sub-contexts for individual underlying requests.
+//
+// Additional functional options can be provided to configure the individual
+// upload. These options are copies of the Uploader instance Upload is called from.
+// Modifying the options will not impact the original Uploader instance.
+//
+// Use the WithUploaderRequestOptions helper function to pass in request
+// options that will be applied to all API operations made with this uploader.
+//
+// It is safe to call this method concurrently across goroutines.
+func (u Uploader) UploadWithContext(ctx aws.Context, input *UploadInput, opts ...func(*Uploader)) (*UploadOutput, error) {
+	i := uploader{in: input, cfg: u, ctx: ctx}
+
+	for _, opt := range opts {
+		opt(&i.cfg)
 	}
+
+	i.cfg.RequestOptions = append(i.cfg.RequestOptions, request.WithAppendUserAgent("S3Manager"))
 
 	return i.upload()
 }
 
+// UploadWithIterator will upload a batched amount of objects to S3. This operation uses
+// the iterator pattern to know which object to upload next. Since this is an interface this
+// allows for custom defined functionality.
+//
+// Example:
+//
+//	svc:= s3manager.NewUploader(sess)
+//
+//	objects := []BatchUploadObject{
+//		{
+//			Object:	&s3manager.UploadInput {
+//				Key: aws.String("key"),
+//				Bucket: aws.String("bucket"),
+//			},
+//		},
+//	}
+//
+//	iter := &s3manager.UploadObjectsIterator{Objects: objects}
+//	if err := svc.UploadWithIterator(aws.BackgroundContext(), iter); err != nil {
+//		return err
+//	}
+func (u Uploader) UploadWithIterator(ctx aws.Context, iter BatchUploadIterator, opts ...func(*Uploader)) error {
+	var errs []Error
+	for iter.Next() {
+		object := iter.UploadObject()
+		if _, err := u.UploadWithContext(ctx, object.Object, opts...); err != nil {
+			s3Err := Error{
+				OrigErr: err,
+				Bucket:  object.Object.Bucket,
+				Key:     object.Object.Key,
+			}
+
+			errs = append(errs, s3Err)
+		}
+
+		if object.After == nil {
+			continue
+		}
+
+		if err := object.After(); err != nil {
+			s3Err := Error{
+				OrigErr: err,
+				Bucket:  object.Object.Bucket,
+				Key:     object.Object.Key,
+			}
+
+			errs = append(errs, s3Err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return NewBatchError("BatchedUploadIncomplete", "some objects have failed to upload.", errs)
+	}
+	return nil
+}
+
 // internal structure to manage an upload to S3.
 type uploader struct {
-	ctx Uploader
+	ctx aws.Context
+	cfg Uploader
 
 	in *UploadInput
 
@@ -346,98 +377,138 @@ type uploader struct {
 // internal logic for deciding whether to upload a single part or use a
 // multipart upload.
 func (u *uploader) upload() (*UploadOutput, error) {
-	u.init()
+	if err := u.init(); err != nil {
+		return nil, awserr.New("ReadRequestBody", "unable to initialize upload", err)
+	}
+	defer u.cfg.partPool.Close()
 
-	if u.ctx.PartSize < MinUploadPartSize {
+	if u.cfg.PartSize < MinUploadPartSize {
 		msg := fmt.Sprintf("part size must be at least %d bytes", MinUploadPartSize)
 		return nil, awserr.New("ConfigError", msg, nil)
 	}
 
 	// Do one read to determine if we have more than one part
-	reader, _, err := u.nextReader()
+	reader, _, cleanup, err := u.nextReader()
 	if err == io.EOF { // single part
-		return u.singlePart(reader)
+		return u.singlePart(reader, cleanup)
 	} else if err != nil {
+		cleanup()
 		return nil, awserr.New("ReadRequestBody", "read upload data failed", err)
 	}
 
 	mu := multiuploader{uploader: u}
-	return mu.upload(reader)
+	return mu.upload(reader, cleanup)
 }
 
 // init will initialize all default options.
-func (u *uploader) init() {
-	if u.ctx.Concurrency == 0 {
-		u.ctx.Concurrency = DefaultUploadConcurrency
+func (u *uploader) init() error {
+	if err := validateSupportedARNType(aws.StringValue(u.in.Bucket)); err != nil {
+		return err
 	}
-	if u.ctx.PartSize == 0 {
-		u.ctx.PartSize = DefaultUploadPartSize
+
+	if u.cfg.Concurrency == 0 {
+		u.cfg.Concurrency = DefaultUploadConcurrency
+	}
+	if u.cfg.PartSize == 0 {
+		u.cfg.PartSize = DefaultUploadPartSize
+	}
+	if u.cfg.MaxUploadParts == 0 {
+		u.cfg.MaxUploadParts = MaxUploadParts
 	}
 
 	// Try to get the total size for some optimizations
-	u.initSize()
+	if err := u.initSize(); err != nil {
+		return err
+	}
+
+	// If PartSize was changed or partPool was never setup then we need to allocated a new pool
+	// so that we return []byte slices of the correct size
+	poolCap := u.cfg.Concurrency + 1
+	if u.cfg.partPool == nil || u.cfg.partPool.SliceSize() != u.cfg.PartSize {
+		u.cfg.partPool = newByteSlicePool(u.cfg.PartSize)
+		u.cfg.partPool.ModifyCapacity(poolCap)
+	} else {
+		u.cfg.partPool = &returnCapacityPoolCloser{byteSlicePool: u.cfg.partPool}
+		u.cfg.partPool.ModifyCapacity(poolCap)
+	}
+
+	return nil
 }
 
 // initSize tries to detect the total stream size, setting u.totalSize. If
 // the size is not known, totalSize is set to -1.
-func (u *uploader) initSize() {
+func (u *uploader) initSize() error {
 	u.totalSize = -1
 
 	switch r := u.in.Body.(type) {
 	case io.Seeker:
-		pos, _ := r.Seek(0, 1)
-		defer r.Seek(pos, 0)
-
-		n, err := r.Seek(0, 2)
+		n, err := aws.SeekerLen(r)
 		if err != nil {
-			return
+			return err
 		}
 		u.totalSize = n
 
 		// Try to adjust partSize if it is too small and account for
 		// integer division truncation.
-		if u.totalSize/u.ctx.PartSize >= int64(u.ctx.MaxUploadParts) {
+		if u.totalSize/u.cfg.PartSize >= int64(u.cfg.MaxUploadParts) {
 			// Add one to the part size to account for remainders
 			// during the size calculation. e.g odd number of bytes.
-			u.ctx.PartSize = (u.totalSize / int64(u.ctx.MaxUploadParts)) + 1
+			u.cfg.PartSize = (u.totalSize / int64(u.cfg.MaxUploadParts)) + 1
 		}
 	}
+
+	return nil
 }
 
 // nextReader returns a seekable reader representing the next packet of data.
 // This operation increases the shared u.readerPos counter, but note that it
 // does not need to be wrapped in a mutex because nextReader is only called
 // from the main thread.
-func (u *uploader) nextReader() (io.ReadSeeker, int, error) {
-	type readerAtSeeker interface {
-		io.ReaderAt
-		io.ReadSeeker
-	}
+func (u *uploader) nextReader() (io.ReadSeeker, int, func(), error) {
 	switch r := u.in.Body.(type) {
 	case readerAtSeeker:
 		var err error
 
-		n := u.ctx.PartSize
+		n := u.cfg.PartSize
 		if u.totalSize >= 0 {
 			bytesLeft := u.totalSize - u.readerPos
 
-			if bytesLeft <= u.ctx.PartSize {
+			if bytesLeft <= u.cfg.PartSize {
 				err = io.EOF
 				n = bytesLeft
 			}
 		}
 
-		reader := io.NewSectionReader(r, u.readerPos, n)
+		var (
+			reader  io.ReadSeeker
+			cleanup func()
+		)
+
+		reader = io.NewSectionReader(r, u.readerPos, n)
+		if u.cfg.BufferProvider != nil {
+			reader, cleanup = u.cfg.BufferProvider.GetWriteTo(reader)
+		} else {
+			cleanup = func() {}
+		}
+
 		u.readerPos += n
 
-		return reader, int(n), err
+		return reader, int(n), cleanup, err
 
 	default:
-		part := make([]byte, u.ctx.PartSize)
-		n, err := readFillBuf(r, part)
+		part, err := u.cfg.partPool.Get(u.ctx)
+		if err != nil {
+			return nil, 0, func() {}, err
+		}
+
+		n, err := readFillBuf(r, *part)
 		u.readerPos += int64(n)
 
-		return bytes.NewReader(part[0:n]), n, err
+		cleanup := func() {
+			u.cfg.partPool.Put(part)
+		}
+
+		return bytes.NewReader((*part)[0:n]), n, cleanup, err
 	}
 }
 
@@ -454,13 +525,18 @@ func readFillBuf(r io.Reader, b []byte) (offset int, err error) {
 // singlePart contains upload logic for uploading a single chunk via
 // a regular PutObject request. Multipart requests require at least two
 // parts, or at least 5MB of data.
-func (u *uploader) singlePart(buf io.ReadSeeker) (*UploadOutput, error) {
+func (u *uploader) singlePart(r io.ReadSeeker, cleanup func()) (*UploadOutput, error) {
+	defer cleanup()
+
 	params := &s3.PutObjectInput{}
 	awsutil.Copy(params, u.in)
-	params.Body = buf
+	params.Body = r
 
-	req, out := u.ctx.S3.PutObjectRequest(params)
-	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
+	// Need to use request form because URL generated in request is
+	// used in return.
+	req, out := u.cfg.S3.PutObjectRequest(params)
+	req.SetContext(u.ctx)
+	req.ApplyOptions(u.cfg.RequestOptions...)
 	if err := req.Send(); err != nil {
 		return nil, err
 	}
@@ -469,6 +545,7 @@ func (u *uploader) singlePart(buf io.ReadSeeker) (*UploadOutput, error) {
 	return &UploadOutput{
 		Location:  url,
 		VersionID: out.VersionId,
+		ETag:      out.ETag,
 	}, nil
 }
 
@@ -484,8 +561,9 @@ type multiuploader struct {
 
 // keeps track of a single chunk of data being sent to S3.
 type chunk struct {
-	buf io.ReadSeeker
-	num int64
+	buf     io.ReadSeeker
+	num     int64
+	cleanup func()
 }
 
 // completedParts is a wrapper to make parts sortable by their part number,
@@ -498,67 +576,50 @@ func (a completedParts) Less(i, j int) bool { return *a[i].PartNumber < *a[j].Pa
 
 // upload will perform a multipart upload using the firstBuf buffer containing
 // the first chunk of data.
-func (u *multiuploader) upload(firstBuf io.ReadSeeker) (*UploadOutput, error) {
+func (u *multiuploader) upload(firstBuf io.ReadSeeker, cleanup func()) (*UploadOutput, error) {
 	params := &s3.CreateMultipartUploadInput{}
 	awsutil.Copy(params, u.in)
 
 	// Create the multipart
-	req, resp := u.ctx.S3.CreateMultipartUploadRequest(params)
-	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
-	if err := req.Send(); err != nil {
+	resp, err := u.cfg.S3.CreateMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
+	if err != nil {
+		cleanup()
 		return nil, err
 	}
 	u.uploadID = *resp.UploadId
 
 	// Create the workers
-	ch := make(chan chunk, u.ctx.Concurrency)
-	for i := 0; i < u.ctx.Concurrency; i++ {
+	ch := make(chan chunk, u.cfg.Concurrency)
+	for i := 0; i < u.cfg.Concurrency; i++ {
 		u.wg.Add(1)
 		go u.readChunk(ch)
 	}
 
 	// Send part 1 to the workers
 	var num int64 = 1
-	ch <- chunk{buf: firstBuf, num: num}
+	ch <- chunk{buf: firstBuf, num: num, cleanup: cleanup}
 
 	// Read and queue the rest of the parts
-	var err error
 	for u.geterr() == nil && err == nil {
-		num++
-		// This upload exceeded maximum number of supported parts, error now.
-		if num > int64(u.ctx.MaxUploadParts) || num > int64(MaxUploadParts) {
-			var msg string
-			if num > int64(u.ctx.MaxUploadParts) {
-				msg = fmt.Sprintf("exceeded total allowed configured MaxUploadParts (%d). Adjust PartSize to fit in this limit",
-					u.ctx.MaxUploadParts)
-			} else {
-				msg = fmt.Sprintf("exceeded total allowed S3 limit MaxUploadParts (%d). Adjust PartSize to fit in this limit",
-					MaxUploadParts)
+		var (
+			reader       io.ReadSeeker
+			nextChunkLen int
+			ok           bool
+		)
+
+		reader, nextChunkLen, cleanup, err = u.nextReader()
+		ok, err = u.shouldContinue(num, nextChunkLen, err)
+		if !ok {
+			cleanup()
+			if err != nil {
+				u.seterr(err)
 			}
-			u.seterr(awserr.New("TotalPartsExceeded", msg, nil))
 			break
 		}
 
-		var reader io.ReadSeeker
-		var nextChunkLen int
-		reader, nextChunkLen, err = u.nextReader()
+		num++
 
-		if err != nil && err != io.EOF {
-			u.seterr(awserr.New(
-				"ReadRequestBody",
-				"read multipart upload data failed",
-				err))
-			break
-		}
-
-		if nextChunkLen == 0 {
-			// No need to upload empty part, if file was empty to start
-			// with empty single part would of been created and never
-			// started multipart upload.
-			break
-		}
-
-		ch <- chunk{buf: reader, num: num}
+		ch <- chunk{buf: reader, num: num, cleanup: cleanup}
 	}
 
 	// Close the channel, wait for workers, and complete upload
@@ -575,11 +636,52 @@ func (u *multiuploader) upload(firstBuf io.ReadSeeker) (*UploadOutput, error) {
 			uploadID: u.uploadID,
 		}
 	}
+
+	// Create a presigned URL of the S3 Get Object in order to have parity with
+	// single part upload.
+	getReq, _ := u.cfg.S3.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: u.in.Bucket,
+		Key:    u.in.Key,
+	})
+	getReq.Config.Credentials = credentials.AnonymousCredentials
+	getReq.SetContext(u.ctx)
+	uploadLocation, _, _ := getReq.PresignRequest(1)
+
 	return &UploadOutput{
-		Location:  aws.StringValue(complete.Location),
+		Location:  uploadLocation,
 		VersionID: complete.VersionId,
 		UploadID:  u.uploadID,
+		ETag:      complete.ETag,
 	}, nil
+}
+
+func (u *multiuploader) shouldContinue(part int64, nextChunkLen int, err error) (bool, error) {
+	if err != nil && err != io.EOF {
+		return false, awserr.New("ReadRequestBody", "read multipart upload data failed", err)
+	}
+
+	if nextChunkLen == 0 {
+		// No need to upload empty part, if file was empty to start
+		// with empty single part would of been created and never
+		// started multipart upload.
+		return false, nil
+	}
+
+	part++
+	// This upload exceeded maximum number of supported parts, error now.
+	if part > int64(u.cfg.MaxUploadParts) || part > int64(MaxUploadParts) {
+		var msg string
+		if part > int64(u.cfg.MaxUploadParts) {
+			msg = fmt.Sprintf("exceeded total allowed configured MaxUploadParts (%d). Adjust PartSize to fit in this limit",
+				u.cfg.MaxUploadParts)
+		} else {
+			msg = fmt.Sprintf("exceeded total allowed S3 limit MaxUploadParts (%d). Adjust PartSize to fit in this limit",
+				MaxUploadParts)
+		}
+		return false, awserr.New("TotalPartsExceeded", msg, nil)
+	}
+
+	return true, err
 }
 
 // readChunk runs in worker goroutines to pull chunks off of the ch channel
@@ -598,21 +700,26 @@ func (u *multiuploader) readChunk(ch chan chunk) {
 				u.seterr(err)
 			}
 		}
+
+		data.cleanup()
 	}
 }
 
 // send performs an UploadPart request and keeps track of the completed
 // part information.
 func (u *multiuploader) send(c chunk) error {
-	req, resp := u.ctx.S3.UploadPartRequest(&s3.UploadPartInput{
-		Bucket:     u.in.Bucket,
-		Key:        u.in.Key,
-		Body:       c.buf,
-		UploadId:   &u.uploadID,
-		PartNumber: &c.num,
-	})
-	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
-	if err := req.Send(); err != nil {
+	params := &s3.UploadPartInput{
+		Bucket:               u.in.Bucket,
+		Key:                  u.in.Key,
+		Body:                 c.buf,
+		UploadId:             &u.uploadID,
+		SSECustomerAlgorithm: u.in.SSECustomerAlgorithm,
+		SSECustomerKey:       u.in.SSECustomerKey,
+		PartNumber:           &c.num,
+	}
+
+	resp, err := u.cfg.S3.UploadPartWithContext(u.ctx, params, u.cfg.RequestOptions...)
+	if err != nil {
 		return err
 	}
 
@@ -644,17 +751,19 @@ func (u *multiuploader) seterr(e error) {
 
 // fail will abort the multipart unless LeavePartsOnError is set to true.
 func (u *multiuploader) fail() {
-	if u.ctx.LeavePartsOnError {
+	if u.cfg.LeavePartsOnError {
 		return
 	}
 
-	req, _ := u.ctx.S3.AbortMultipartUploadRequest(&s3.AbortMultipartUploadInput{
+	params := &s3.AbortMultipartUploadInput{
 		Bucket:   u.in.Bucket,
 		Key:      u.in.Key,
 		UploadId: &u.uploadID,
-	})
-	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
-	req.Send()
+	}
+	_, err := u.cfg.S3.AbortMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
+	if err != nil {
+		logMessage(u.cfg.S3, aws.LogDebug, fmt.Sprintf("failed to abort multipart upload, %v", err))
+	}
 }
 
 // complete successfully completes a multipart upload and returns the response.
@@ -667,17 +776,22 @@ func (u *multiuploader) complete() *s3.CompleteMultipartUploadOutput {
 	// Parts must be sorted in PartNumber order.
 	sort.Sort(u.parts)
 
-	req, resp := u.ctx.S3.CompleteMultipartUploadRequest(&s3.CompleteMultipartUploadInput{
+	params := &s3.CompleteMultipartUploadInput{
 		Bucket:          u.in.Bucket,
 		Key:             u.in.Key,
 		UploadId:        &u.uploadID,
 		MultipartUpload: &s3.CompletedMultipartUpload{Parts: u.parts},
-	})
-	req.Handlers.Build.PushBack(request.MakeAddToUserAgentFreeFormHandler("S3Manager"))
-	if err := req.Send(); err != nil {
+	}
+	resp, err := u.cfg.S3.CompleteMultipartUploadWithContext(u.ctx, params, u.cfg.RequestOptions...)
+	if err != nil {
 		u.seterr(err)
 		u.fail()
 	}
 
 	return resp
+}
+
+type readerAtSeeker interface {
+	io.ReaderAt
+	io.ReadSeeker
 }
