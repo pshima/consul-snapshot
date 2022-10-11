@@ -1,3 +1,7 @@
+## 0.2.5
+* Upgrade to golang 1.19
+* Update to use go mod
+
 ## 0.2.4 (Unreleased)
 
 ## 0.2.3 
