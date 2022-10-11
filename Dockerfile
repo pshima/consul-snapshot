@@ -1,6 +1,4 @@
-FROM golang:1.8-alpine
-
-MAINTAINER Sebastian Montini <sebastian@jampp.com>
+FROM golang:1.19-alpine
 
 RUN apk update \
   && apk add gcc musl-dev git linux-headers make
