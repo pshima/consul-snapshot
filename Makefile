@@ -19,7 +19,7 @@ updatedeps:
 	go get -u -v cloud.google.com/go/storage
 	go get -u -v golang.org/x/net/context
 
-build: deps
+build:
 	go build
 
 fmt:
@@ -29,13 +29,16 @@ bootstrap:
 	go get -u -v  github.com/golang/lint/golint
 	go get -u -v github.com/mitchellh/gox
 
-test: bootstrap
+test:
 	go test `go list ./... | grep -v /vendor/`
 	go vet `go list ./... | grep -v /vendor/`
-	go list ./... |grep -v /vendor/ | xargs -L1 golint
 
-build-all: test
-	gox -arch="386 amd64" -os="darwin linux windows" github.com/pshima/consul-snapshot
+build-all:
+	GOOS=linux GOARCH=386 go build -o consul-snapshot-linux-386
+	GOOS=linux GOARCH=amd64 go build -o consul-snapshot-linux-amd64
+	GOOS=darwin GOARCH=amd64 go build -o consul-snapshot-darwin-amd64
+	GOOS=windows GOARCH=386 go build -o consul-snapshot-windows-386.exe
+	GOOS=windows GOARCH=amd64 go build -o consul-snapshot-windows-amd64.exe
 
 install:
 	go install
