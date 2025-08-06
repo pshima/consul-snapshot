@@ -1,14 +1,14 @@
 language: go
 
 go:
-  - 1.6.2
+  - 1.x
 
 env:
   - CGO_ENABLED=0
 
 install:
   - go get -t ./...
-  - go get github.com/golang/lint/golint
+  - go get golang.org/x/lint/golint
   - go get github.com/gordonklaus/ineffassign
 
 script:

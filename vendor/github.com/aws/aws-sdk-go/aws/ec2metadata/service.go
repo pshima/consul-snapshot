@@ -9,6 +9,9 @@
 // The endpoint of the EC2 IMDS client can be configured via the environment
 // variable, AWS_EC2_METADATA_SERVICE_ENDPOINT when creating the client with a
 // Session. See aws/session#Options.EC2IMDSEndpoint for more details.
+//
+// Deprecated: aws-sdk-go is deprecated. Use aws-sdk-go-v2.
+// See https://aws.amazon.com/blogs/developer/announcing-end-of-support-for-aws-sdk-for-go-v1-on-july-31-2025/.
 package ec2metadata
 
 import (
@@ -57,13 +60,13 @@ type EC2Metadata struct {
 // New creates a new instance of the EC2Metadata client with a session.
 // This client is safe to use across multiple goroutines.
 //
-//
 // Example:
-//     // Create a EC2Metadata client from just a session.
-//     svc := ec2metadata.New(mySession)
 //
-//     // Create a EC2Metadata client with additional configuration
-//     svc := ec2metadata.New(mySession, aws.NewConfig().WithLogLevel(aws.LogDebugHTTPBody))
+//	// Create a EC2Metadata client from just a session.
+//	svc := ec2metadata.New(mySession)
+//
+//	// Create a EC2Metadata client with additional configuration
+//	svc := ec2metadata.New(mySession, aws.NewConfig().WithLogLevel(aws.LogDebugHTTPBody))
 func New(p client.ConfigProvider, cfgs ...*aws.Config) *EC2Metadata {
 	c := p.ClientConfig(ServiceName, cfgs...)
 	return NewClient(*c.Config, c.Handlers, c.Endpoint, c.SigningRegion)

@@ -24,7 +24,7 @@ consul-snapshot has been used in production since February 2016.
 ## Installation
 Grab the binary from [Releases](https://github.com/pshima/consul-snapshot/releases)
 
-consul-snapshot requires go 1.8.3 to build as consul requires 1.8.3.
+consul-snapshot requires go 1.24+ to build.
 
 With go get:
 ```

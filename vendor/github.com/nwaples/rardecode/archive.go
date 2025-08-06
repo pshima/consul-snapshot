@@ -31,10 +31,10 @@ var (
 	errUnknownDecoder     = errors.New("rardecode: unknown decoder version")
 	errUnsupportedDecoder = errors.New("rardecode: unsupported decoder version")
 	errArchiveContinues   = errors.New("rardecode: archive continues in next volume")
+	errArchiveEnd         = errors.New("rardecode: archive end reached")
 	errDecoderOutOfData   = errors.New("rardecode: decoder expected more data than is in packed file")
 
-	reNew = regexp.MustCompile(`(?:(\d+)[^\.]+)*(\d+)\D*$`) // for new style rar file naming
-	reOld = regexp.MustCompile(`(\d+|[^\d\.]{1,2})$`)       // for old style rar file naming
+	reDigits = regexp.MustCompile(`\d+`)
 )
 
 type readBuf []byte
@@ -137,67 +137,150 @@ func findSig(br *bufio.Reader) (int, error) {
 // files in a multi-volume archive
 type volume struct {
 	fileBlockReader
-	f    *os.File      // current file handle
-	br   *bufio.Reader // buffered reader for current volume file
-	name string        // current volume name
-	num  int           // volume number
-	old  bool          // uses old naming scheme
+	f     *os.File      // current file handle
+	br    *bufio.Reader // buffered reader for current volume file
+	dir   string        // volume directory
+	file  string        // current volume file (not including directory)
+	files []string      // full path names for current volume files processed
+	num   int           // volume number
+	old   bool          // uses old naming scheme
 }
 
-// nextVolName updates name to the next filename in the archive.
-func (v *volume) nextVolName() {
-	var lo, hi int
+func (v *volume) openFile(file string) error {
+	f, err := os.Open(v.dir + file)
+	if err != nil {
+		return err
+	}
+	v.f = f
+	v.file = file
+	return nil
+}
 
-	dir, file := filepath.Split(v.name)
-	if v.num == 0 {
-		ext := filepath.Ext(file)
-		switch strings.ToLower(ext) {
-		case "", ".", ".exe", ".sfx":
-			file = file[:len(file)-len(ext)] + ".rar"
-		}
-		if a, ok := v.fileBlockReader.(*archive15); ok {
-			v.old = a.old
-		}
-	}
-	if !v.old {
-		m := reNew.FindStringSubmatchIndex(file)
-		if m == nil {
-			v.old = true
-		} else {
-			lo = m[2]
-			hi = m[3]
-			if lo < 0 {
-				lo = m[4]
-				hi = m[5]
-			}
+func nextNewVolName(file string) string {
+	// find all numbers in volume name
+	m := reDigits.FindAllStringIndex(file, -1)
+	if l := len(m); l > 1 {
+		// More than 1 match so assume name.part###of###.rar style.
+		// Take the last 2 matches where the first is the volume number.
+		m = m[l-2 : l]
+		if strings.Contains(file[m[0][1]:m[1][0]], ".") || !strings.Contains(file[:m[0][0]], ".") {
+			// Didn't match above style as volume had '.' between the two numbers or didnt have a '.'
+			// before the first match. Use the second number as volume number.
+			m = m[1:]
 		}
 	}
-	if v.old {
-		m := reOld.FindStringSubmatchIndex(file)
-		lo = m[2]
-		hi = m[3]
-	}
+	// extract and increment volume number
+	lo, hi := m[0][0], m[0][1]
 	n, err := strconv.Atoi(file[lo:hi])
 	if err != nil {
 		n = 0
 	} else {
 		n++
 	}
+	// volume number must use at least the same number of characters as previous volume
 	vol := fmt.Sprintf("%0"+fmt.Sprint(hi-lo)+"d", n)
-	v.name = dir + file[:lo] + vol + file[hi:]
+	file = file[:lo] + vol + file[hi:]
+	return file
+}
+
+func nextOldVolName(file string) string {
+	// old style volume naming
+	i := strings.LastIndex(file, ".")
+	// For old style naming if 2nd and 3rd character of file extension is not a digit replace
+	// with "00" and ignore any trailing characters.
+	if len(file) < i+4 || file[i+2] < '0' || file[i+2] > '9' || file[i+3] < '0' || file[i+3] > '9' {
+		file = file[:i+2] + "00"
+		return file
+	}
+	// get file extension
+	b := []byte(file[i+1:])
+	// start incrementing volume number digits from rightmost
+	for j := 2; j >= 0; j-- {
+		if b[j] != '9' {
+			b[j]++
+			break
+		}
+		// digit overflow
+		if j == 0 {
+			// last character before '.'
+			b[j] = 'A'
+		} else {
+			// set to '0' and loop to next character
+			b[j] = '0'
+		}
+	}
+	file = file[:i+1] + string(b)
+	return file
+}
+
+// openNextFile opens the next volume file in the archive.
+func (v *volume) openNextFile() error {
+	file := v.file
+	if v.num == 0 {
+		// check file extensions
+		i := strings.LastIndex(file, ".")
+		if i < 0 {
+			// no file extension, add one
+			file += ".rar"
+		} else {
+			ext := strings.ToLower(file[i+1:])
+			// replace with .rar for empty extensions & self extracting archives
+			if ext == "" || ext == "exe" || ext == "sfx" {
+				file = file[:i+1] + "rar"
+			}
+		}
+		if a, ok := v.fileBlockReader.(*archive15); ok {
+			v.old = a.old
+		}
+		// new naming scheme must have volume number in filename
+		if !v.old {
+			if reDigits.FindStringIndex(file) != nil {
+				// found digits, try using new naming scheme
+				err := v.openFile(nextNewVolName(file))
+				if err != nil && os.IsNotExist(err) {
+					// file didn't exist, try old naming scheme
+					oldErr := v.openFile(nextOldVolName(file))
+					if oldErr == nil || !os.IsNotExist(err) {
+						v.old = true
+						return oldErr
+					}
+				}
+				return err
+			}
+			v.old = true
+		}
+	}
+	// new style volume naming
+	if !v.old {
+		file = nextNewVolName(file)
+	} else {
+		file = nextOldVolName(file)
+	}
+	return v.openFile(file)
 }
 
 func (v *volume) next() (*fileBlockHeader, error) {
 	for {
+		var atEOF bool
+
 		h, err := v.fileBlockReader.next()
-		if err != errArchiveContinues {
+		switch err {
+		case errArchiveContinues:
+		case io.EOF:
+			// Read all of volume without finding an end block. The only way
+			// to tell if the archive continues is to try to open the next volume.
+			atEOF = true
+		default:
 			return h, err
 		}
 
 		v.f.Close()
-		v.nextVolName()
-		v.f, err = os.Open(v.name) // Open next volume file
+		err = v.openNextFile() // Open next volume file
 		if err != nil {
+			if atEOF && os.IsNotExist(err) {
+				// volume not found so assume that the archive has ended
+				return nil, io.EOF
+			}
 			return nil, err
 		}
 		v.num++
@@ -209,7 +292,8 @@ func (v *volume) next() (*fileBlockHeader, error) {
 		if v.version() != ver {
 			return nil, errVerMismatch
 		}
-		v.reset(v.br) // reset fileBlockReader to use new file
+		v.files = append(v.files, v.dir+v.file)
+		v.reset() // reset encryption
 	}
 }
 
@@ -224,7 +308,7 @@ func (v *volume) Close() error {
 func openVolume(name, password string) (*volume, error) {
 	var err error
 	v := new(volume)
-	v.name = name
+	v.dir, v.file = filepath.Split(name)
 	v.f, err = os.Open(name)
 	if err != nil {
 		return nil, err
@@ -235,14 +319,11 @@ func openVolume(name, password string) (*volume, error) {
 		v.f.Close()
 		return nil, err
 	}
+	v.files = append(v.files, name)
 	return v, nil
 }
 
-func newFileBlockReader(r io.Reader, pass string) (fileBlockReader, error) {
-	br, ok := r.(*bufio.Reader)
-	if !ok {
-		br = bufio.NewReader(r)
-	}
+func newFileBlockReader(br *bufio.Reader, pass string) (fileBlockReader, error) {
 	runes := []rune(pass)
 	if len(runes) > maxPassword {
 		pass = string(runes[:maxPassword])

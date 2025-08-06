@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/internal"
+	"google.golang.org/grpc/internal/xds"
 )
 
 const cfeClusterNamePrefix = "google_cfe_"
@@ -40,6 +40,7 @@ const cfeClusterAuthorityName = "traffic-director-c2p.xds.googleapis.com"
 //     "xdstp://traffic-director-c2p.xds.googleapis.com/envoy.config.cluster.v3.Cluster/google_cfe_",
 //     use TLS
 //   - otherwise, use ALTS
+//
 // - else, do TLS
 //
 // On the server, ServerHandshake always does TLS.
@@ -62,7 +63,7 @@ func clusterName(ctx context.Context) string {
 	if chi.Attributes == nil {
 		return ""
 	}
-	cluster, _ := internal.GetXDSHandshakeClusterName(chi.Attributes)
+	cluster, _ := xds.GetXDSHandshakeClusterName(chi.Attributes)
 	return cluster
 }
 

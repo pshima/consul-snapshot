@@ -2,11 +2,11 @@ package backup
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/context"
 	"io"
 	"io/ioutil"
 	"log"
@@ -24,7 +24,71 @@ import (
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
 	"github.com/pshima/consul-snapshot/health"
+	"github.com/pshima/consul-snapshot/interfaces"
+	"strings"
 )
+
+// ConsulAdapter wraps the consul API client to implement ConsulClient interface
+type ConsulAdapter struct {
+	Client *consulapi.Client
+}
+
+// ListKeys lists all keys from consul
+func (c *ConsulAdapter) ListKeys() (consulapi.KVPairs, error) {
+	listOpt := &consulapi.QueryOptions{
+		AllowStale:        false,
+		RequireConsistent: true,
+	}
+	keys, _, err := c.Client.KV().List("/", listOpt)
+	return keys, err
+}
+
+// ListPQs lists all prepared queries from consul
+func (c *ConsulAdapter) ListPQs() ([]*consulapi.PreparedQueryDefinition, error) {
+	listOpt := &consulapi.QueryOptions{
+		AllowStale:        false,
+		RequireConsistent: true,
+	}
+	pqs, _, err := c.Client.PreparedQuery().List(listOpt)
+	return pqs, err
+}
+
+// ListACLs lists all ACLs from consul
+func (c *ConsulAdapter) ListACLs() ([]*consulapi.ACLEntry, error) {
+	listOpt := &consulapi.QueryOptions{
+		AllowStale:        false,
+		RequireConsistent: true,
+	}
+	
+	acls, _, err := c.Client.ACL().List(listOpt)
+	if err != nil {
+		// Handle ACL disabled case
+		if strings.Contains(err.Error(), "401 (ACL support disabled)") {
+			return []*consulapi.ACLEntry{}, nil
+		}
+		return nil, err
+	}
+	return acls, nil
+}
+
+// PutKV puts a key-value pair in consul
+func (c *ConsulAdapter) PutKV(key string, value []byte) error {
+	p := &consulapi.KVPair{Key: key, Value: value}
+	_, err := c.Client.KV().Put(p, nil)
+	return err
+}
+
+// CreatePQ creates a prepared query in consul
+func (c *ConsulAdapter) CreatePQ(pq *consulapi.PreparedQueryDefinition) error {
+	_, _, err := c.Client.PreparedQuery().Create(pq, nil)
+	return err
+}
+
+// CreateACL creates an ACL in consul
+func (c *ConsulAdapter) CreateACL(acl *consulapi.ACLEntry) error {
+	_, _, err := c.Client.ACL().Create(acl, nil)
+	return err
+}
 
 // Backup is the backup itself including configuration and data
 type Backup struct {
@@ -32,6 +96,10 @@ type Backup struct {
 	ACLJSONData      []byte
 	Client           *consul.Consul
 	Config           *config.Config
+	Storage          interfaces.StorageClient
+	FileSystem       interfaces.FileSystem
+	Archiver         interfaces.Archiver
+	Logger           interfaces.Logger
 	FullFilename     string
 	KVFileChecksum   string
 	KVJSONData       []byte
@@ -77,7 +145,9 @@ func Runner(version string, once bool) int {
 
 	conf := config.ParseConfig(false)
 	conf.Version = version
-	client := &consul.Consul{Client: *consul.Client()}
+	consulClient := consul.Client()
+	adapter := &ConsulAdapter{Client: consulClient}
+	client := &consul.Consul{Client: adapter}
 
 	if once {
 		err := doWork(conf, client)
@@ -93,7 +163,7 @@ func Runner(version string, once bool) int {
 		for range ticker.C {
 			err := doWork(conf, client)
 			if err != nil {
-				log.Fatalf(err.Error())
+				log.Fatalf("Error during backup: %s", err.Error())
 			}
 		}
 	}
@@ -242,7 +312,15 @@ func (b *Backup) preProcess() {
 func (b *Backup) writeMetaLocal() {
 	endTime := time.Now().Unix()
 
-	nodename, err := b.Client.Client.Agent().NodeName()
+	// Try to get node name if the client is a ConsulAdapter
+	var nodename string
+	var err error
+	if adapter, ok := b.Client.Client.(*ConsulAdapter); ok {
+		nodename, err = adapter.Client.Agent().NodeName()
+	} else {
+		nodename = ""
+		err = nil
+	}
 	if err != nil {
 		nodename = ""
 	}
@@ -298,8 +376,13 @@ func (b *Backup) compressStagedBackup() {
 	}
 	finalpath := filepath.Join(b.Config.TmpDir, finalfile)
 	b.FullFilename = finalpath
+	
+	// Remove existing file if it exists to avoid conflicts
+	os.Remove(finalpath)
+	
 	source := []string{b.LocalFilePath}
-	err := archiver.TarGz(finalpath, source)
+	tgz := archiver.NewTarGz()
+	err := tgz.Archive(source, finalpath)
 	if err != nil {
 		log.Fatalf("[ERR] Unable to write compressed archive to %s: %v", finalpath, err)
 	}
@@ -376,13 +459,13 @@ func (b *Backup) writeBackupRemote() {
 // There are no tests for the remote operation.
 func (b *Backup) postProcess() {
 	// Mark a key in consul for our last backup time.
-	writeOpt := &consulapi.WriteOptions{}
 	startstring := fmt.Sprintf("%v", b.StartTime)
 
 	var err error
 
 	lastbackup := &consulapi.KVPair{Key: "service/consul-snapshot/lastbackup", Value: []byte(startstring)}
-	_, err = b.Client.Client.KV().Put(lastbackup, writeOpt)
+	// Use the PutKV method from the ConsulClient interface
+	err = b.Client.Client.PutKV(lastbackup.Key, lastbackup.Value)
 	if err != nil {
 		log.Fatalf("[ERR] Failed writing last backup timestamp to consul: %v", err)
 	}

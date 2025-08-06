@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/mholt/archiver"
+	"github.com/pshima/consul-snapshot/adapters"
 	"github.com/pshima/consul-snapshot/backup"
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
@@ -45,7 +46,11 @@ type Restore struct {
 
 // Runner is the base level to start a restore and is called from command
 func Runner(restorepath string) int {
-	consulClient := &consul.Consul{Client: *consul.Client()}
+	adapter, err := adapters.NewConsulAdapter()
+	if err != nil {
+		log.Fatalf("[ERR] Failed to create consul adapter: %v", err)
+	}
+	consulClient := &consul.Consul{Client: adapter}
 
 	conf := config.ParseConfig(false)
 
@@ -175,7 +180,8 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 // extractBackup uses archiver to extract the backup locally.
 func (r *Restore) extractBackup() {
 	dest := filepath.Dir(r.LocalFilePath)
-	archiver.UntarGz(r.LocalFilePath, dest)
+	tgz := archiver.NewTarGz()
+	tgz.Unarchive(r.LocalFilePath, dest)
 }
 
 // parsev1data is used if we have detected the backup has no metadata
@@ -296,7 +302,7 @@ func restoreKV(r *Restore, c *consul.Consul) {
 	restoredKeyCount := 0
 	errorCount := 0
 	for _, data := range r.JSONData {
-		_, err := c.Client.KV().Put(data, nil)
+		err := c.Client.PutKV(data.Key, data.Value)
 		if err != nil {
 			errorCount++
 			log.Printf("Unable to restore key: %s, %v", data.Key, err)

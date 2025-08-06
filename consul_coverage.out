@@ -1,0 +1,26 @@
+mode: set
+github.com/pshima/consul-snapshot/consul/consul.go:21.56,25.2 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:28.33,30.16 2 1
+github.com/pshima/consul-snapshot/consul/consul.go:30.16,31.13 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:33.2,33.15 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:37.35,39.16 2 1
+github.com/pshima/consul-snapshot/consul/consul.go:39.16,41.3 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:42.2,44.12 3 1
+github.com/pshima/consul-snapshot/consul/consul.go:48.34,50.16 2 1
+github.com/pshima/consul-snapshot/consul/consul.go:50.16,52.3 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:53.2,55.12 3 1
+github.com/pshima/consul-snapshot/consul/consul.go:59.35,61.16 2 1
+github.com/pshima/consul-snapshot/consul/consul.go:61.16,63.3 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:64.2,66.12 3 1
+github.com/pshima/consul-snapshot/consul/consul.go:70.60,71.26 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:71.26,72.58 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:72.58,74.4 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:76.2,76.12 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:80.77,81.25 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:81.25,82.47 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:82.47,84.4 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:86.2,86.12 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:90.64,91.27 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:91.27,92.49 1 1
+github.com/pshima/consul-snapshot/consul/consul.go:92.49,94.4 1 0
+github.com/pshima/consul-snapshot/consul/consul.go:96.2,96.12 1 1
