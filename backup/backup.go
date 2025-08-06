@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	consulapi "github.com/hashicorp/consul/api"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archives"
 	"github.com/pshima/consul-snapshot/config"
 	"github.com/pshima/consul-snapshot/consul"
 	"github.com/pshima/consul-snapshot/crypt"
@@ -380,9 +380,29 @@ func (b *Backup) compressStagedBackup() {
 	// Remove existing file if it exists to avoid conflicts
 	os.Remove(finalpath)
 	
-	source := []string{b.LocalFilePath}
-	tgz := archiver.NewTarGz()
-	err := tgz.Archive(source, finalpath)
+	// Create output file
+	out, err := os.Create(finalpath)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to create output file %s: %v", finalpath, err)
+	}
+	defer out.Close()
+	
+	// Map files from disk for archiving
+	ctx := context.Background()
+	files, err := archives.FilesFromDisk(ctx, nil, map[string]string{
+		b.LocalFilePath: "", // Add all files from the local path to root of archive
+	})
+	if err != nil {
+		log.Fatalf("[ERR] Unable to prepare files for archive: %v", err)
+	}
+	
+	// Create compressed tar.gz archive
+	format := archives.CompressedArchive{
+		Compression: archives.Gz{},
+		Archival:    archives.Tar{},
+	}
+	
+	err = format.Archive(ctx, out, files)
 	if err != nil {
 		log.Fatalf("[ERR] Unable to write compressed archive to %s: %v", finalpath, err)
 	}

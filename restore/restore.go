@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	consulapi "github.com/hashicorp/consul/api"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archives"
 	"github.com/pshima/consul-snapshot/adapters"
 	"github.com/pshima/consul-snapshot/backup"
 	"github.com/pshima/consul-snapshot/config"
@@ -177,11 +177,63 @@ func getRemoteBackup(r *Restore, conf *config.Config) {
 	log.Print("[INFO] Download completed")
 }
 
-// extractBackup uses archiver to extract the backup locally.
+// extractBackup uses archives to extract the backup locally.
 func (r *Restore) extractBackup() {
 	dest := filepath.Dir(r.LocalFilePath)
-	tgz := archiver.NewTarGz()
-	tgz.Unarchive(r.LocalFilePath, dest)
+	
+	// Open the compressed archive
+	file, err := os.Open(r.LocalFilePath)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to open archive %s: %v", r.LocalFilePath, err)
+	}
+	defer file.Close()
+	
+	// Create decompressor for gzip
+	decompressor := archives.Gz{}
+	decompressed, err := decompressor.OpenReader(file)
+	if err != nil {
+		log.Fatalf("[ERR] Unable to decompress archive: %v", err)
+	}
+	defer decompressed.Close()
+	
+	// Extract tar archive
+	ctx := context.Background()
+	err = archives.Tar{}.Extract(ctx, decompressed, func(ctx context.Context, f archives.FileInfo) error {
+		// Create the full path for the file
+		fullPath := filepath.Join(dest, f.NameInArchive)
+		
+		// Create directory if needed
+		if f.IsDir() {
+			return os.MkdirAll(fullPath, 0755)
+		}
+		
+		// Ensure parent directory exists
+		dir := filepath.Dir(fullPath)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		
+		// Create and write file
+		out, err := os.Create(fullPath)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+		
+		// Open file from archive and copy contents
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		
+		_, err = io.Copy(out, rc)
+		return err
+	})
+	
+	if err != nil {
+		log.Fatalf("[ERR] Unable to extract archive: %v", err)
+	}
 }
 
 // parsev1data is used if we have detected the backup has no metadata
