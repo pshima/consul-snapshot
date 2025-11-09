@@ -117,3 +117,18 @@ func TestParseConfig(t *testing.T) {
 		t.Error("Hostname not being set correctly!")
 	}
 }
+
+func TestS3Endpoint(t *testing.T) {
+	var c Config
+	os.Clearenv()
+	os.Setenv("S3BUCKET", "buckettest")
+	os.Setenv("S3REGION", "regiontest")
+	os.Setenv("S3ENDPOINT", "https://minio.example.com:9000")
+	os.Setenv("BACKUPINTERVAL", "60")
+
+	_ = setEnvVars(&c, true)
+
+	if c.S3Endpoint != "https://minio.example.com:9000" {
+		t.Errorf("Expected S3ENDPOINT to be 'https://minio.example.com:9000', got %v", c.S3Endpoint)
+	}
+}

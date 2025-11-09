@@ -43,6 +43,7 @@ make install
 Configuration is done from environment variables.
 - S3BUCKET (the s3 bucket where backups should be delivered)
 - S3REGION (the region the s3 bucket is located)
+- S3ENDPOINT (optional custom S3 endpoint URL for S3-compatible services like MinIO, e.g., `https://minio.example.com:9000`)
 - AWS_ACCESS_KEY_ID (the access key id used to access the bucket)
 - AWS_SECRET_ACCESS_KEY (the secret key used to access the bucket)
 - GCSBUCKET (the Google Cloud Storage bucket where backups should be delivered)

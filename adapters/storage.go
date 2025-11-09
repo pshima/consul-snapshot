@@ -17,16 +17,26 @@ import (
 type S3Adapter struct {
 	session    *session.Session
 	region     string
+	endpoint   string
 	encryption string
 	kmsKeyID   string
 }
 
 // NewS3Adapter creates a new S3 adapter
-func NewS3Adapter(region, encryption, kmsKeyID string) interfaces.StorageClient {
-	sess := session.New(&aws.Config{Region: aws.String(region)})
+func NewS3Adapter(region, endpoint, encryption, kmsKeyID string) interfaces.StorageClient {
+	awsConfig := &aws.Config{Region: aws.String(region)}
+	
+	// If endpoint is provided, use it for S3-compatible services
+	if endpoint != "" {
+		awsConfig.Endpoint = aws.String(endpoint)
+		awsConfig.S3ForcePathStyle = aws.Bool(true) // Required for MinIO and most S3-compatible services
+	}
+	
+	sess := session.New(awsConfig)
 	return &S3Adapter{
 		session:    sess,
 		region:     region,
+		endpoint:   endpoint,
 		encryption: encryption,
 		kmsKeyID:   kmsKeyID,
 	}

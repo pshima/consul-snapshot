@@ -116,7 +116,15 @@ func doWork(conf *config.Config, c *consul.Consul, restorePath string) {
 
 // getRemoteBackup is used to pull backups from S3
 func getRemoteBackupS3(r *Restore, conf *config.Config, outFile *os.File) {
-	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
+	awsConfig := &aws.Config{Region: aws.String(string(conf.S3Region))}
+	
+	// If endpoint is provided, use it for S3-compatible services
+	if conf.S3Endpoint != "" {
+		awsConfig.Endpoint = aws.String(conf.S3Endpoint)
+		awsConfig.S3ForcePathStyle = aws.Bool(true) // Required for MinIO and most S3-compatible services
+	}
+	
+	s3Conn := session.New(awsConfig)
 
 	// Create the params to pass into the actual downloader
 	params := &s3.GetObjectInput{

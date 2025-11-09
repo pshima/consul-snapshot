@@ -39,6 +39,7 @@ job "consul-snapshot" {
             env {
                 S3BUCKET = "lookmomimbackingupmyconsul"
                 S3REGION = "us-east-1"
+                # S3ENDPOINT = "https://minio.example.com:9000"  # Optional: for S3-compatible services
                 AWS_ACCESS_KEY_ID = "AK1234567890"
                 AWS_SECRET_ACCESS_KEY = "8idsufpa0udfp8apdf98afd"
                 BACKUPINTERVAL = 300
