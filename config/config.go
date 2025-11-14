@@ -17,6 +17,7 @@ type Config struct {
 	S3Region               string
 	S3AccessKey            string
 	S3SecretKey            string
+	S3Endpoint             string
 	Hostname               string
 	BackupInterval         time.Duration
 	TmpDir                 string
@@ -54,6 +55,7 @@ func setEnvVars(conf *Config, tests bool) error {
 	conf.S3Region = os.Getenv("S3REGION")
 	conf.S3AccessKey = os.Getenv("AWS_ACCESS_KEY_ID")
 	conf.S3SecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	conf.S3Endpoint = os.Getenv("S3ENDPOINT")
 	backupInterval := os.Getenv("BACKUPINTERVAL")
 	conf.TmpDir = os.Getenv("SNAPSHOT_TMP_DIR")
 	acceptanceTest := os.Getenv("ACCEPTANCE_TEST")

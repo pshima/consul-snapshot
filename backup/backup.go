@@ -411,7 +411,15 @@ func (b *Backup) compressStagedBackup() {
 // Write the local backup file to S3.
 // There are no tests for this remote operation
 func (b *Backup) writeBackupRemoteS3(localFileContents []byte) {
-	s3Conn := session.New(&aws.Config{Region: aws.String(string(b.Config.S3Region))})
+	awsConfig := &aws.Config{Region: aws.String(string(b.Config.S3Region))}
+	
+	// If endpoint is provided, use it for S3-compatible services
+	if b.Config.S3Endpoint != "" {
+		awsConfig.Endpoint = aws.String(b.Config.S3Endpoint)
+		awsConfig.S3ForcePathStyle = aws.Bool(true) // Required for MinIO and most S3-compatible services
+	}
+	
+	s3Conn := session.New(awsConfig)
 	// Create the params to pass into the actual uploader
 	params := &s3manager.UploadInput{
 		Bucket: &b.Config.S3Bucket,

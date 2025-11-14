@@ -39,6 +39,7 @@ job "consul-snapshot" {
       env {
         "S3BUCKET" = "backups.example.bucket"
         "S3REGION" = "us-east-1"
+        # "S3ENDPOINT" = "https://minio.example.com:9000"  # Optional: for S3-compatible services
         "BACKUPINTERVAL" = 300
         "CONSUL_HTTP_ADDR" = "consul.example.com:8500"
       }
